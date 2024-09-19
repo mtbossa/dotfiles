@@ -13,19 +13,44 @@
     - name: Install packages
       ansible.builtin.apt:
         name:
-          - alacritty
+          - curl
           - git
           - htop
           - vim
           - gcc
           - zsh
           - tmux
+          - alacritty
         state: present
 
     - name: Change shell to zsh
       ansible.builtin.user:
         name: "{{ remote_regular_user }}"
         shell: /usr/bin/zsh
+
+    - name: Check if Starship is installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/starship
+      register: starship_installed
+
+    - name: Download Starship installer script
+      ansible.builtin.get_url:
+        url: https://starship.rs/install.sh
+        dest: /tmp/starship_install.sh
+        mode: '0755'
+      when: starship_installed is failed
+
+    - name: Install Starship prompt
+      ansible.builtin.shell: "set -o pipefail && sh /tmp/starship_install.sh -y"
+      args:
+        executable: /bin/bash
+        creates: /usr/local/bin/starship
+      become: true
+      when: starship_installed is failed
+
+    - name: Verify Starship installation
+      ansible.builtin.command: starship --version
+      changed_when: false
 
     - name: Add Brave Browser Key
       ansible.builtin.get_url:
