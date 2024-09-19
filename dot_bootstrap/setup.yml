@@ -29,9 +29,10 @@
         shell: /usr/bin/zsh
 
     - name: Check if Starship is installed
-      ansible.builtin.stat:
-        path: /usr/local/bin/starship
+      ansible.builtin.command: "command -v starship"
       register: starship_installed
+      ignore_errors: true
+      changed_when: false
 
     - name: Download Starship installer script
       ansible.builtin.get_url:
