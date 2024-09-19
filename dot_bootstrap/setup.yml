@@ -20,8 +20,6 @@
           - gcc
           - zsh
           - tmux
-          - ffmpeg-free
-          - make
         state: present
 
     - name: Change shell to zsh
