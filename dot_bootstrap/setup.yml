@@ -126,9 +126,9 @@
         owner: "{{ remote_regular_user }}"
 
     - name: Check if FiraCode exists
-      ansible.builtin.stat:
-        path: "~{{ remote_regular_user }}/.fonts/FiraCode"
+      ansible.builtin.shell: "ls ~{{ remote_regular_user }}/.fonts/*FiraCode*"
       register: firacode_exists
+      ignore_errors: true
       changed_when: false
 
     - name: Download FiraCode
