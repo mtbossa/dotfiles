@@ -64,7 +64,7 @@
         dest: /tmp/get-docker.sh
         mode: '0755'
 
-    - name: Run Docker installation script with --dry-run
+    - name: Run Docker installation script
       ansible.builtin.command:
         cmd: "sh /tmp/get-docker.sh"
       become: true
