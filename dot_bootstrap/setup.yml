@@ -66,7 +66,7 @@
 
     - name: Run Docker installation script with --dry-run
       ansible.builtin.command:
-        cmd: "sh /tmp/get-docker.sh --dry-run"
+        cmd: "sh /tmp/get-docker.sh"
       become: true
       changed_when: false
 
