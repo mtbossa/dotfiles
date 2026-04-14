@@ -1,0 +1,150 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+# config hash: {{ .email }}|{{ .githubUser }}|{{ .chezmoi.hostname }}
+set -euo pipefail
+
+cleanup() {
+    bw lock &>/dev/null || true
+    unset BW_SESSION GITHUB_TOKEN 2>/dev/null || true
+}
+trap cleanup EXIT
+
+SSH_DIR="${HOME}/.ssh"
+KEY_PATH="${SSH_DIR}/id_ed25519"
+KEY_COMMENT="{{ .email }}@{{ .chezmoi.hostname }}"
+KEY_NAME="{{ .chezmoi.hostname }}"
+GITHUB_USER="{{ .githubUser }}"
+GITHUB_API="https://api.github.com"
+
+mkdir -p "${SSH_DIR}"
+chmod 700 "${SSH_DIR}"
+
+# --- 1. Generate SSH key if missing ---
+if [ ! -f "${KEY_PATH}" ]; then
+    echo "Generating SSH key..."
+    ssh-keygen -t ed25519 -C "${KEY_COMMENT}" -f "${KEY_PATH}" -N ""
+    echo "SSH key generated: ${KEY_PATH}"
+else
+    echo "SSH key already exists: ${KEY_PATH}"
+fi
+
+PUB_KEY=$(cat "${KEY_PATH}.pub")
+
+# --- 2. Get GitHub token from Bitwarden ---
+echo "Unlocking Bitwarden..."
+if ! bw login --check &>/dev/null; then
+    echo "Please log in to Bitwarden:"
+    BW_SESSION=$(bw login --raw)
+else
+    BW_SESSION=$(bw unlock --raw)
+fi
+export BW_SESSION
+
+GITHUB_TOKEN=$(bw get password github-pat --session "${BW_SESSION}")
+
+if [ -z "${GITHUB_TOKEN}" ]; then
+    echo "ERROR: Could not retrieve GitHub token from Bitwarden" >&2
+    exit 1
+fi
+
+AUTH_HEADER="Authorization: token ${GITHUB_TOKEN}"
+
+# Validate token scopes
+echo "Validating GitHub token..."
+SCOPE_RESPONSE=$(curl -sI -H "${AUTH_HEADER}" "${GITHUB_API}/user")
+SCOPES=$(echo "${SCOPE_RESPONSE}" | grep -i "x-oauth-scopes" | cut -d: -f2 | xargs)
+echo "Token scopes: ${SCOPES}"
+
+# --- 3. Register SSH key with GitHub ---
+
+# 3a. Authentication key (/user/keys)
+EXISTING_AUTH_KEYS=$(curl -sf -H "${AUTH_HEADER}" "${GITHUB_API}/user/keys" || echo "[]")
+OLD_AUTH_KEY_ID=$(echo "${EXISTING_AUTH_KEYS}" | jq -r --arg title "${KEY_NAME}" '.[] | select(.title == $title) | .id')
+
+if [ -n "${OLD_AUTH_KEY_ID}" ] && [ "${OLD_AUTH_KEY_ID}" != "null" ]; then
+    # Key with this hostname exists — check if it matches current public key
+    OLD_AUTH_KEY=$(echo "${EXISTING_AUTH_KEYS}" | jq -r --arg title "${KEY_NAME}" '.[] | select(.title == $title) | .key')
+    if [ "${OLD_AUTH_KEY}" != "$(awk '{print $1, $2}' "${KEY_PATH}.pub")" ]; then
+        echo "Replacing stale auth key '${KEY_NAME}'..."
+        curl -sf -X DELETE -H "${AUTH_HEADER}" "${GITHUB_API}/user/keys/${OLD_AUTH_KEY_ID}"
+        OLD_AUTH_KEY_ID=""
+    else
+        echo "GitHub auth key '${KEY_NAME}' already registered and current, skipping."
+    fi
+fi
+
+if [ -z "${OLD_AUTH_KEY_ID}" ] || [ "${OLD_AUTH_KEY_ID}" = "null" ]; then
+    HTTP_CODE=$(curl -s -o /tmp/gh_auth_key_response.json -w "%{http_code}" \
+        -H "${AUTH_HEADER}" \
+        -H "Content-Type: application/json" \
+        -d "$(jq -n --arg title "${KEY_NAME}" --arg key "${PUB_KEY}" '{title: $title, key: $key}')" \
+        "${GITHUB_API}/user/keys")
+    if [ "${HTTP_CODE}" = "201" ]; then
+        echo "SSH auth key registered with GitHub."
+    else
+        echo "ERROR: Failed to register auth key (HTTP ${HTTP_CODE})" >&2
+        cat /tmp/gh_auth_key_response.json >&2
+        exit 1
+    fi
+fi
+
+# 3b. Signing key (/user/ssh_signing_keys)
+EXISTING_SIGNING_KEYS=$(curl -sf -H "${AUTH_HEADER}" "${GITHUB_API}/user/ssh_signing_keys" || echo "[]")
+OLD_SIGNING_KEY_ID=$(echo "${EXISTING_SIGNING_KEYS}" | jq -r --arg title "${KEY_NAME}" '.[] | select(.title == $title) | .id')
+
+if [ -n "${OLD_SIGNING_KEY_ID}" ] && [ "${OLD_SIGNING_KEY_ID}" != "null" ]; then
+    OLD_SIGNING_KEY=$(echo "${EXISTING_SIGNING_KEYS}" | jq -r --arg title "${KEY_NAME}" '.[] | select(.title == $title) | .key')
+    if [ "${OLD_SIGNING_KEY}" != "$(awk '{print $1, $2}' "${KEY_PATH}.pub")" ]; then
+        echo "Replacing stale signing key '${KEY_NAME}'..."
+        curl -sf -X DELETE -H "${AUTH_HEADER}" "${GITHUB_API}/user/ssh_signing_keys/${OLD_SIGNING_KEY_ID}"
+        OLD_SIGNING_KEY_ID=""
+    else
+        echo "GitHub signing key '${KEY_NAME}' already registered and current, skipping."
+    fi
+fi
+
+if [ -z "${OLD_SIGNING_KEY_ID}" ] || [ "${OLD_SIGNING_KEY_ID}" = "null" ]; then
+    HTTP_CODE=$(curl -s -o /tmp/gh_signing_key_response.json -w "%{http_code}" \
+        -H "${AUTH_HEADER}" \
+        -H "Content-Type: application/json" \
+        -d "$(jq -n --arg title "${KEY_NAME}" --arg key "${PUB_KEY}" '{title: $title, key: $key}')" \
+        "${GITHUB_API}/user/ssh_signing_keys")
+    if [ "${HTTP_CODE}" = "201" ]; then
+        echo "SSH signing key registered with GitHub."
+    else
+        echo "ERROR: Failed to register signing key (HTTP ${HTTP_CODE})" >&2
+        cat /tmp/gh_signing_key_response.json >&2
+        exit 1
+    fi
+fi
+
+# --- 4. Create allowed_signers file ---
+echo "{{ .email }} $(cat "${KEY_PATH}.pub")" > "${SSH_DIR}/allowed_signers"
+
+# --- 5. Configure SSH for GitHub ---
+if ! grep -q "Host github.com" "${SSH_DIR}/config" 2>/dev/null; then
+    cat >> "${SSH_DIR}/config" <<SSHEOF
+
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ${KEY_PATH}
+    IdentitiesOnly yes
+SSHEOF
+    chmod 600 "${SSH_DIR}/config"
+    echo "SSH config for GitHub added."
+fi
+
+# --- 6. Switch dotfiles remote to SSH ---
+CHEZMOI_DIR="{{ .chezmoi.sourceDir }}"
+CURRENT_REMOTE=$(git -C "${CHEZMOI_DIR}" remote get-url origin 2>/dev/null || echo "")
+if [[ "${CURRENT_REMOTE}" == https://* ]]; then
+    SSH_REMOTE="git@github.com:${GITHUB_USER}/dotfiles.git"
+    git -C "${CHEZMOI_DIR}" remote set-url origin "${SSH_REMOTE}"
+    echo "Switched dotfiles remote to SSH: ${SSH_REMOTE}"
+fi
+
+echo ""
+echo "Done. SSH key generated, registered with GitHub, git configured for SSH signing."
+
+{{ end -}}

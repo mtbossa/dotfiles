@@ -1,0 +1,14 @@
+[user]
+    name = {{ .name }}
+    email = {{ .email }}
+    signingkey = ~/.ssh/id_ed25519.pub
+[init]
+    defaultBranch = main
+[gpg]
+    format = ssh
+[gpg "ssh"]
+    allowedSignersFile = ~/.ssh/allowed_signers
+[commit]
+    gpgsign = true
+[tag]
+    gpgsign = true

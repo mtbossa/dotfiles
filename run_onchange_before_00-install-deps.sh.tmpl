@@ -1,0 +1,42 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+set -euo pipefail
+
+# Install snapd if missing (needed for bw)
+if ! command -v snap &>/dev/null; then
+    if [ -f /etc/debian_version ]; then
+        sudo apt-get update
+        sudo apt-get install -y snapd
+    elif [ -f /etc/fedora-release ]; then
+        sudo dnf install -y snapd
+        sudo systemctl enable --now snapd.socket
+        sudo ln -sf /var/lib/snapd/snap /snap
+    fi
+fi
+
+# Install Bitwarden CLI via snap if missing
+if ! command -v bw &>/dev/null; then
+    sudo snap install bw
+fi
+
+# Install jq if missing
+if ! command -v jq &>/dev/null; then
+    if [ -f /etc/debian_version ]; then
+        sudo apt-get update
+        sudo apt-get install -y jq
+    elif [ -f /etc/fedora-release ]; then
+        sudo dnf install -y jq
+    fi
+fi
+
+# Install ansible if missing
+if ! command -v ansible &>/dev/null; then
+    if [ -f /etc/debian_version ]; then
+        sudo apt-get update
+        sudo apt-get install -y ansible
+    elif [ -f /etc/fedora-release ]; then
+        sudo dnf install -y ansible
+    fi
+fi
+
+{{ end -}}
