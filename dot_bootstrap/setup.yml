@@ -5,6 +5,18 @@
   connection: local
   gather_facts: true
 
+  vars:
+    nerd_fonts_version: "v3.2.1"
+    nerd_fonts:
+      - name: JetBrainsMono
+        pattern: "JetBrainsMonoNerd*FontMono*"
+      - name: FiraCode
+        pattern: "*FiraCode*"
+    snap_packages:
+      - discord
+      - postman
+      - dbeaver-ce
+
   tasks:
     - name: Get my user
       ansible.builtin.set_fact:
@@ -21,13 +33,19 @@
           - zsh
           - tmux
           - alacritty
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+          - snapd
         state: present
+        update_cache: true
 
     - name: Change shell to zsh
       ansible.builtin.user:
         name: "{{ remote_regular_user }}"
         shell: /usr/bin/zsh
 
+    # Starship Installation
     - name: Check if Starship is installed
       ansible.builtin.command: "command -v starship"
       register: starship_installed
@@ -46,26 +64,23 @@
       args:
         executable: /bin/bash
         creates: /usr/local/bin/starship
-      become: true
       when: starship_installed is failed
 
     - name: Verify Starship installation
       ansible.builtin.command: starship --version
       changed_when: false
 
-    - name: Add Brave Browser Key
+    # Brave Browser Installation
+    - name: Add Brave Browser GPG key
       ansible.builtin.get_url:
         url: https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
         dest: /usr/share/keyrings/brave-browser-archive-keyring.gpg
         mode: '0644'
 
-    - name: Add Brave Browser Repository
+    - name: Add Brave Browser repository
       ansible.builtin.apt_repository:
         repo: "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main"
         state: present
-
-    - name: Update APT cache
-      ansible.builtin.apt:
         update_cache: true
 
     - name: Install Brave Browser
@@ -73,28 +88,34 @@
         name: brave-browser
         state: present
 
-    - name: Install prerequisite packages
-      ansible.builtin.apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - software-properties-common
+    # Docker Installation
+    - name: Ensure /etc/apt/keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Docker GPG key
+      ansible.builtin.get_url:
+        url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
         state: present
         update_cache: true
 
-    # Docker Installation via get-docker.sh
-    - name: Download Docker installation script
-      ansible.builtin.get_url:
-        url: https://get.docker.com
-        dest: /tmp/get-docker.sh
-        mode: '0755'
-
-    - name: Run Docker installation script
-      ansible.builtin.command:
-        cmd: "sh /tmp/get-docker.sh"
-      become: true
-      changed_when: false
+    - name: Install Docker packages
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
 
     - name: Ensure Docker service is running
       ansible.builtin.service:
@@ -104,64 +125,38 @@
 
     - name: Add user to docker group
       ansible.builtin.user:
-        name: "{{ ansible_env.SUDO_USER or ansible_user_id }}"
+        name: "{{ remote_regular_user }}"
         groups: docker
         append: true
 
-    - name: Install Snap package manager
-      ansible.builtin.apt:
-        name: snapd
-        state: present
-
-    - name: Install Discord via Snap
+    # Snap Packages
+    - name: Install Snap packages
       community.general.snap:
-        name: discord
+        name: "{{ item }}"
         state: present
+      loop: "{{ snap_packages }}"
 
-    - name: Install Postman via Snap
-      community.general.snap:
-        name: postman
-        state: present
-
-    - name: Install DBeaver CE via Snap
-      community.general.snap:
-        name: dbeaver-ce
-        state: present
-
-    # Font Installation Tasks
-    - name: Ensure fonts directory
+    # Font Installation
+    - name: Ensure fonts directory exists
       ansible.builtin.file:
-        path: "~{{ remote_regular_user }}/.fonts"
+        path: "/home/{{ remote_regular_user }}/.fonts"
         state: directory
         mode: "0755"
         owner: "{{ remote_regular_user }}"
 
-    - name: Check if Jetbrains Mono exists
-      ansible.builtin.shell: "ls ~{{ remote_regular_user }}/.fonts/JetBrainsMonoNerd*FontMono*"
-      register: jetbrains_mono_exists
-      ignore_errors: true
-      changed_when: false
+    - name: Check which Nerd Fonts are already installed
+      ansible.builtin.find:
+        paths: "/home/{{ remote_regular_user }}/.fonts"
+        patterns: "{{ item.pattern }}"
+      register: font_find_results
+      loop: "{{ nerd_fonts }}"
 
-    - name: Download Jetbrains mono
-      when: jetbrains_mono_exists is failed
+    - name: Download missing Nerd Fonts
       ansible.builtin.unarchive:
-        src: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.2.1/JetBrainsMono.zip
-        dest: "~{{ remote_regular_user }}/.fonts/"
+        src: "https://github.com/ryanoasis/nerd-fonts/releases/download/{{ nerd_fonts_version }}/{{ item.item.name }}.zip"
+        dest: "/home/{{ remote_regular_user }}/.fonts/"
         remote_src: true
         mode: "0755"
         owner: "{{ remote_regular_user }}"
-
-    - name: Check if FiraCode exists
-      ansible.builtin.shell: "ls ~{{ remote_regular_user }}/.fonts/*FiraCode*"
-      register: firacode_exists
-      ignore_errors: true
-      changed_when: false
-
-    - name: Download FiraCode
-      when: firacode_exists is failed
-      ansible.builtin.unarchive:
-        src: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.2.1/FiraCode.zip
-        dest: "~{{ remote_regular_user }}/.fonts/"
-        remote_src: true
-        mode: "0755"
-        owner: "{{ remote_regular_user }}"
+      loop: "{{ font_find_results.results }}"
+      when: item.matched == 0
