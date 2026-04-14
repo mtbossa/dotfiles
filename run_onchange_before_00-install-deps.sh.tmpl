@@ -19,14 +19,9 @@ if ! command -v bw &>/dev/null; then
     sudo snap install bw
 fi
 
-# Install jq if missing
-if ! command -v jq &>/dev/null; then
-    if [ -f /etc/debian_version ]; then
-        sudo apt-get update
-        sudo apt-get install -y jq
-    elif [ -f /etc/fedora-release ]; then
-        sudo dnf install -y jq
-    fi
+# Install GitHub CLI via snap if missing
+if ! command -v gh &>/dev/null; then
+    sudo snap install gh
 fi
 
 # Install ansible if missing
