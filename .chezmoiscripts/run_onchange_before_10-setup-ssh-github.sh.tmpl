@@ -38,8 +38,8 @@ else
 fi
 export BW_SESSION
 
-GH_TOKEN=$(bw get password github-pat --session "${BW_SESSION}")
-if [ -z "${GH_TOKEN}" ]; then
+GH_TOKEN=$(bw list items --search "github-pat" --session "${BW_SESSION}" | jq -r '.[0].login.password')
+if [ -z "${GH_TOKEN}" ] || [ "${GH_TOKEN}" = "null" ]; then
     echo "ERROR: Could not retrieve GitHub token from Bitwarden" >&2
     exit 1
 fi

@@ -15,31 +15,48 @@ if [ ! -x "${ATUIN_BIN}" ]; then
     exit 1
 fi
 
+# Helper: get a field from a uniquely-named Bitwarden item
+bw_get() {
+    local item_name="$1"
+    local field="$2"   # jq path, e.g. .login.password or .login.username
+    bw list items --search "${item_name}" --session "${BW_SESSION}" \
+        | jq -r --arg name "${item_name}" \
+            '.[] | select(.name == $name) | '"${field}"
+}
+
+# --- Unlock Bitwarden ---
+echo "Unlocking Bitwarden..."
+if ! bw login --check &>/dev/null; then
+    BW_SESSION=$(bw login --raw)
+else
+    BW_SESSION=$(bw unlock --raw)
+fi
+export BW_SESSION
+
 # --- Login ---
 if "${ATUIN_BIN}" account info &>/dev/null; then
     echo "Atuin already logged in, skipping login."
 else
-    echo "Unlocking Bitwarden..."
-    if ! bw login --check &>/dev/null; then
-        BW_SESSION=$(bw login --raw)
-    else
-        BW_SESSION=$(bw unlock --raw)
-    fi
-    export BW_SESSION
+    ATUIN_USERNAME=$(bw_get "atuin-account" ".login.username")
+    ATUIN_PASSWORD=$(bw_get "atuin-account" ".login.password")
+    ATUIN_KEY=$(bw_get "atuin-key" ".login.password")
 
-    ATUIN_USERNAME=$(bw get username atuin-account --session "${BW_SESSION}")
-    ATUIN_PASSWORD=$(bw get password atuin-account --session "${BW_SESSION}")
-    ATUIN_KEY=$(bw get password atuin-key --session "${BW_SESSION}")
+    if [ -z "${ATUIN_USERNAME}" ] || [ "${ATUIN_USERNAME}" = "null" ] \
+    || [ -z "${ATUIN_PASSWORD}" ] || [ "${ATUIN_PASSWORD}" = "null" ] \
+    || [ -z "${ATUIN_KEY}" ]      || [ "${ATUIN_KEY}" = "null" ]; then
+        echo "ERROR: Could not retrieve atuin credentials from Bitwarden" >&2
+        exit 1
+    fi
 
     "${ATUIN_BIN}" login -u "${ATUIN_USERNAME}" -p "${ATUIN_PASSWORD}" -k "${ATUIN_KEY}"
     echo "Atuin login complete."
 fi
 
-# --- Sync address (idempotent) ---
-ATUIN_SYNC_ADDRESS=$(bw get password atuin-server --session "${BW_SESSION:-}")
-if [ -n "${ATUIN_SYNC_ADDRESS}" ]; then
+# --- Sync address ---
+ATUIN_SYNC_ADDRESS=$(bw_get "atuin-server" ".login.uris[0].uri")
+if [ -n "${ATUIN_SYNC_ADDRESS}" ] && [ "${ATUIN_SYNC_ADDRESS}" != "null" ]; then
     "${ATUIN_BIN}" config set sync_address "${ATUIN_SYNC_ADDRESS}"
-    echo "Atuin sync address set."
+    echo "Atuin sync address set to ${ATUIN_SYNC_ADDRESS}."
 fi
 
 "${ATUIN_BIN}" sync
