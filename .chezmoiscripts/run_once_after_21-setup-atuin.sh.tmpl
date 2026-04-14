@@ -33,7 +33,16 @@ else
 fi
 export BW_SESSION
 
-# --- Login ---
+# --- 1. Set sync server before login ---
+ATUIN_SYNC_ADDRESS=$(bw_get "atuin-server" ".login.uris[0].uri")
+if [ -z "${ATUIN_SYNC_ADDRESS}" ] || [ "${ATUIN_SYNC_ADDRESS}" = "null" ]; then
+    echo "ERROR: Could not retrieve atuin sync address from Bitwarden" >&2
+    exit 1
+fi
+"${ATUIN_BIN}" config set sync_address "${ATUIN_SYNC_ADDRESS}"
+echo "Atuin sync address set to ${ATUIN_SYNC_ADDRESS}."
+
+# --- 2. Login ---
 if "${ATUIN_BIN}" account info &>/dev/null; then
     echo "Atuin already logged in, skipping login."
 else
@@ -52,13 +61,7 @@ else
     echo "Atuin login complete."
 fi
 
-# --- Sync address ---
-ATUIN_SYNC_ADDRESS=$(bw_get "atuin-server" ".login.uris[0].uri")
-if [ -n "${ATUIN_SYNC_ADDRESS}" ] && [ "${ATUIN_SYNC_ADDRESS}" != "null" ]; then
-    "${ATUIN_BIN}" config set sync_address "${ATUIN_SYNC_ADDRESS}"
-    echo "Atuin sync address set to ${ATUIN_SYNC_ADDRESS}."
-fi
-
+# --- 3. Sync ---
 "${ATUIN_BIN}" sync
 echo "Atuin sync enabled."
 
