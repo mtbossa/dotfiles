@@ -2,6 +2,9 @@
 {{- $email := promptStringOnce . "email" "Email address" -}}
 {{- $githubUser := promptStringOnce . "githubUser" "GitHub username" -}}
 
+verbose = true
+progress = true
+
 [data]
     name = {{ $name | quote }}
     email = {{ $email | quote }}
