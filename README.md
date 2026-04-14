@@ -97,8 +97,8 @@ Before bootstrapping a new machine, ensure your Bitwarden vault has:
 | Item name | Field | Value |
 |-----------|-------|-------|
 | `github-pat` | password | A GitHub fine-grained PAT |
-| `atuin` | username | Your atuin account username |
-| `atuin` | password | Your atuin account password |
+| `atuin-account` | username | Your atuin account username |
+| `atuin-account` | password | Your atuin account password |
 | `atuin-key` | password | Your atuin encryption key (shown on `atuin key`) |
 | `atuin-server` | password | Your atuin sync server URL (e.g. `http://10.x.x.x:8888`) |
 

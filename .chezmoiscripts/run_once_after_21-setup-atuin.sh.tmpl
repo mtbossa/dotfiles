@@ -27,8 +27,8 @@ else
     fi
     export BW_SESSION
 
-    ATUIN_USERNAME=$(bw get username atuin --session "${BW_SESSION}")
-    ATUIN_PASSWORD=$(bw get password atuin --session "${BW_SESSION}")
+    ATUIN_USERNAME=$(bw get username atuin-account --session "${BW_SESSION}")
+    ATUIN_PASSWORD=$(bw get password atuin-account --session "${BW_SESSION}")
     ATUIN_KEY=$(bw get password atuin-key --session "${BW_SESSION}")
 
     "${ATUIN_BIN}" login -u "${ATUIN_USERNAME}" -p "${ATUIN_PASSWORD}" -k "${ATUIN_KEY}"
