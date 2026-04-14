@@ -51,25 +51,24 @@
         shell: /usr/bin/zsh
 
     # Starship Installation
-    - name: Check if Starship is installed
-      ansible.builtin.command: "command -v starship"
-      register: starship_installed
+    - name: Check if starship is available in apt
+      ansible.builtin.command: apt-cache show starship
+      register: starship_apt
       ignore_errors: true
       changed_when: false
 
-    - name: Download Starship installer script
-      ansible.builtin.get_url:
-        url: https://starship.rs/install.sh
-        dest: /tmp/starship_install.sh
-        mode: "0755"
-      when: starship_installed is failed
+    - name: Install Starship via apt
+      ansible.builtin.apt:
+        name: starship
+        state: present
+      when: starship_apt is succeeded
 
-    - name: Install Starship prompt
-      ansible.builtin.shell: "set -o pipefail && sh /tmp/starship_install.sh -y"
+    - name: Install Starship via curl installer (not in apt)
+      ansible.builtin.shell: "curl -sS https://starship.rs/install.sh | sh -s -- --yes"
       args:
         executable: /bin/bash
         creates: /usr/local/bin/starship
-      when: starship_installed is failed
+      when: starship_apt is failed
 
     - name: Verify Starship installation
       ansible.builtin.command: starship --version
@@ -165,6 +164,13 @@
         owner: "{{ remote_regular_user }}"
       loop: "{{ font_find_results.results }}"
       when: item.matched == 0
+      register: fonts_downloaded
+
+    - name: Refresh font cache
+      ansible.builtin.command: fc-cache -f "/home/{{ remote_regular_user }}/.fonts"
+      become_user: "{{ remote_regular_user }}"
+      when: fonts_downloaded.changed
+      changed_when: true
 
     # mise Installation
     - name: Check if mise is installed
