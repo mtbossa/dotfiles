@@ -144,11 +144,19 @@
       register: font_find_results
       loop: "{{ nerd_fonts }}"
 
-    - name: Download missing Nerd Fonts
+    - name: Download missing Nerd Font zips
+      ansible.builtin.get_url:
+        url: "https://github.com/ryanoasis/nerd-fonts/releases/download/{{ nerd_fonts_version }}/{{ item.item.name }}.zip"
+        dest: "/tmp/{{ item.item.name }}.zip"
+        mode: "0644"
+        timeout: 300
+      loop: "{{ font_find_results.results }}"
+      when: item.matched == 0
+
+    - name: Extract missing Nerd Fonts
       ansible.builtin.unarchive:
-        src: "https://github.com/ryanoasis/nerd-fonts/releases/download/{{ nerd_fonts_version }}/{{ item.item.name }}.zip"
+        src: "/tmp/{{ item.item.name }}.zip"
         dest: "/home/{{ remote_regular_user }}/.fonts/"
-        remote_src: true
         mode: "0755"
         owner: "{{ remote_regular_user }}"
       loop: "{{ font_find_results.results }}"
