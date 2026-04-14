@@ -213,3 +213,18 @@
         update: true
       become_user: "{{ remote_regular_user }}"
       loop: "{{ zsh_plugins }}"
+
+    # TPM & Tmux Plugins
+    - name: Clone TPM (Tmux Plugin Manager)
+      ansible.builtin.git:
+        repo: https://github.com/tmux-plugins/tpm
+        dest: "/home/{{ remote_regular_user }}/.tmux/plugins/tpm"
+        update: true
+      become_user: "{{ remote_regular_user }}"
+
+    - name: Install tmux plugins via TPM
+      ansible.builtin.shell: "/home/{{ remote_regular_user }}/.tmux/plugins/tpm/bin/install_plugins"
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      changed_when: false
