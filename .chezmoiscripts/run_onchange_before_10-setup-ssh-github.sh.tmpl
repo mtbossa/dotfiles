@@ -56,7 +56,7 @@ fi
 
 register_key() {
     local key_type="$1"      # "authentication" or "signing"
-    local api_path="$2"       # "/user/keys" or "/user/ssh_signing_keys"
+    local api_path="$2"      # "/user/keys" or "/user/ssh_signing_keys"
 
     local existing_id
     existing_id=$(gh api "${api_path}" --jq ".[] | select(.title == \"${KEY_NAME}\") | .id" || echo "")
