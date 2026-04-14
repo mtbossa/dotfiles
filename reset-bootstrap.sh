@@ -23,7 +23,7 @@ echo ""
 # --- 1. chezmoi script state ---
 # This is the most important step — forces all run_once_ and run_onchange_ scripts to re-run.
 echo -e "${GREEN}[1/5] Clearing chezmoi script state...${NC}"
-chezmoi state delete-bucket --bucket=scriptState
+chezmoi state delete-bucket --bucket=scriptState 2>/dev/null || true
 echo "Done."
 
 # --- 2. SSH key ---
@@ -45,7 +45,6 @@ echo ""
 echo -e "${GREEN}[3/5] SSH config${NC}"
 if grep -q "Host github.com" "${HOME}/.ssh/config" 2>/dev/null; then
     if confirm "Remove 'Host github.com' block from ~/.ssh/config?"; then
-        # Remove the block: from the blank line before "Host github.com" through "IdentitiesOnly yes"
         sed -i '/^$/{ N; /\nHost github\.com/{N;N;N;N;d} }' "${HOME}/.ssh/config"
         echo "GitHub SSH config block removed."
     fi
@@ -71,7 +70,7 @@ echo ""
 echo -e "${GREEN}[5/5] Deployed dotfiles${NC}"
 echo -e "${RED}WARNING: This removes all chezmoi-managed files from your home directory (.gitconfig, .zshrc, .bashrc, etc.)${NC}"
 if confirm "Remove all chezmoi-managed dotfiles from \$HOME? (skip this if you just want scripts to re-run)"; then
-    chezmoi destroy --force
+    chezmoi managed --include=files --path-style=absolute | xargs -r rm -f
     echo "All managed dotfiles removed."
 else
     echo "Skipped — only script state was cleared."
@@ -79,4 +78,4 @@ fi
 
 echo ""
 echo -e "${GREEN}Reset complete.${NC}"
-echo "Run 'chezmoi apply' to bootstrap again."
+echo "Run 'chezmoi apply' (or see bootstrap.sh for a fresh machine) to bootstrap again."
