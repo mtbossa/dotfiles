@@ -1,0 +1,10 @@
+sync_address = "{{ (bitwarden "item" "atuin-server").login.uri }}"
+enter_accept = true
+search_mode = "daemon-fuzzy"
+
+[sync]
+records = true
+
+[daemon]
+enabled = true
+autostart = true
