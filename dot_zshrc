@@ -103,8 +103,12 @@ source $ZSH/oh-my-zsh.sh
 # From https://www.atlassian.com/git/tutorials/dotfiles
 ###### end aliases ######
 
-eval "$(mise activate zsh)"
+# mise
+export PATH="$HOME/.local/bin:$PATH"
+[[ -x "$HOME/.local/bin/mise" ]] && eval "$(mise activate zsh)"
 
-eval "$(atuin init zsh)"
+# atuin
+export PATH="$HOME/.atuin/bin:$PATH"
+[[ -x "$HOME/.atuin/bin/atuin" ]] && eval "$(atuin init zsh)"
 
 eval "$(starship init zsh)"

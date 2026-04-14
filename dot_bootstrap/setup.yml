@@ -5,12 +5,6 @@
   connection: local
   gather_facts: true
 
-  roles:
-    - role: geerlingguy.docker
-      vars:
-        docker_users:
-          - "{{ remote_regular_user }}"
-
   vars:
     remote_regular_user: "{{ ansible_env.SUDO_USER | default(ansible_user_id) }}"
     nerd_fonts_version: "v3.2.1"
@@ -109,6 +103,20 @@
       ansible.builtin.apt:
         name: brave-browser
         state: present
+
+    # Snap Packages
+    - name: Install Docker via geerlingguy.docker role
+      block:
+        - name: Include geerlingguy.docker role
+          ansible.builtin.include_role:
+            name: geerlingguy.docker
+          vars:
+            docker_users:
+              - "{{ remote_regular_user }}"
+      rescue:
+        - name: Warn about Docker installation failure
+          ansible.builtin.debug:
+            msg: "Docker installation failed. Skipping and continuing with the rest of the setup."
 
     # Snap Packages
     - name: Install Snap packages
