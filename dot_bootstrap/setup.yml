@@ -160,3 +160,29 @@
         owner: "{{ remote_regular_user }}"
       loop: "{{ font_find_results.results }}"
       when: item.matched == 0
+
+    # mise Installation
+    - name: Check if mise is installed
+      ansible.builtin.stat:
+        path: "/home/{{ remote_regular_user }}/.local/bin/mise"
+      register: mise_stat
+
+    - name: Install mise
+      ansible.builtin.shell: "curl https://mise.run | sh"
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      when: not mise_stat.stat.exists
+
+    # Atuin Installation
+    - name: Check if atuin is installed
+      ansible.builtin.stat:
+        path: "/home/{{ remote_regular_user }}/.atuin/bin/atuin"
+      register: atuin_stat
+
+    - name: Install atuin
+      ansible.builtin.shell: "curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh -s -- --non-interactive"
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      when: not atuin_stat.stat.exists
