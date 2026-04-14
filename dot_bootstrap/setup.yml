@@ -16,7 +16,6 @@
     snap_packages:
       - discord
       - postman
-      - dbeaver-ce
     zsh_plugins:
       - name: zsh-autosuggestions
         repo: https://github.com/zsh-users/zsh-autosuggestions
@@ -124,6 +123,10 @@
         name: "{{ item }}"
         state: present
       loop: "{{ snap_packages }}"
+      register: snap_result
+      failed_when:
+        - snap_result is failed
+        - item not in (snap_result.snaps_installed | default([]))
 
     # Font Installation
     - name: Ensure fonts directory exists
