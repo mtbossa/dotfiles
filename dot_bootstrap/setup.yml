@@ -53,6 +53,21 @@
         name: "{{ remote_regular_user }}"
         shell: /usr/bin/zsh
 
+    # Oh My Zsh Installation
+    - name: Check if Oh My Zsh is already installed
+      ansible.builtin.stat:
+        path: "/home/{{ remote_regular_user }}/.oh-my-zsh"
+      register: ohmyzsh_stat
+
+    - name: Install Oh My Zsh
+      ansible.builtin.shell: >
+        curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh |
+        sh -s -- --unattended --keep-zshrc --skip-chsh
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      when: not ohmyzsh_stat.stat.exists
+
     # Starship Installation
     - name: Check if starship is available in apt
       ansible.builtin.command: apt-cache show starship
