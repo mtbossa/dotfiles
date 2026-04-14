@@ -99,6 +99,9 @@ Before bootstrapping a new machine, ensure your Bitwarden vault has:
 | Item name | Field | Value |
 |-----------|-------|-------|
 | `github-pat` | password | A GitHub fine-grained PAT |
+| `atuin` | username | Your atuin account username |
+| `atuin` | password | Your atuin account password |
+| `atuin-key` | password | Your atuin encryption key (shown on `atuin key`) |
 
 Required PAT permissions (fine-grained token, resource owner = your account):
 
@@ -122,7 +125,8 @@ dotfiles/
 │   ├── run_onchange_before_02-install-gh.sh.tmpl
 │   ├── run_onchange_before_03-install-ansible.sh.tmpl
 │   ├── run_onchange_before_10-setup-ssh-github.sh.tmpl
-│   └── run_once_after_20-run-ansible.sh.tmpl
+│   ├── run_once_after_20-run-ansible.sh.tmpl
+│   └── run_once_after_21-setup-atuin.sh.tmpl
 ├── dot_gitconfig.tmpl              # ~/.gitconfig (SSH signing configured)
 ├── dot_zshrc                       # ~/.zshrc
 ├── dot_bashrc                      # ~/.bashrc

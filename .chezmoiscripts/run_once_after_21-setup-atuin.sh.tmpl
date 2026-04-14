@@ -1,0 +1,25 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+set -euo pipefail
+
+# Skip if already logged in
+if atuin account info &>/dev/null; then
+    echo "Atuin already logged in, skipping."
+    exit 0
+fi
+
+if ! command -v atuin &>/dev/null; then
+    echo "ERROR: atuin is not installed" >&2
+    exit 1
+fi
+
+ATUIN_USERNAME="{{ (bitwarden "item" "atuin").login.username }}"
+ATUIN_PASSWORD="{{ (bitwarden "item" "atuin").login.password }}"
+ATUIN_KEY="{{ (bitwarden "item" "atuin-key").login.password }}"
+
+atuin login -u "${ATUIN_USERNAME}" -p "${ATUIN_PASSWORD}" -k "${ATUIN_KEY}"
+atuin sync
+
+echo "Atuin sync enabled."
+
+{{ end -}}
