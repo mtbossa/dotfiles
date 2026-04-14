@@ -19,3 +19,7 @@ alias dcud="docker compose up -d"
 alias packiyo="cd /home/mtbossa/Development/packiyo/packiyo/docker"
 alias jogai="cd /home/mtbossa/Development/jogai"
 alias packiyo-work="docker compose exec -u laradock workspace zsh"
+
+alias claude-personal="CLAUDE_CONFIG_DIR=~/.claude-personal claude"
+alias claude-bsc="CLAUDE_CONFIG_DIR=~/.claude-bsc claude"
+alias claude-packiyo="CLAUDE_CONFIG_DIR=~/.claude-packiyo claude"
