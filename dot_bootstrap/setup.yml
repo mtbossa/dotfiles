@@ -5,7 +5,14 @@
   connection: local
   gather_facts: true
 
+  roles:
+    - role: geerlingguy.docker
+      vars:
+        docker_users:
+          - "{{ remote_regular_user }}"
+
   vars:
+    remote_regular_user: "{{ ansible_env.SUDO_USER | default(ansible_user_id) }}"
     nerd_fonts_version: "v3.2.1"
     nerd_fonts:
       - name: JetBrainsMono
@@ -23,10 +30,6 @@
         repo: https://github.com/zsh-users/zsh-syntax-highlighting
 
   tasks:
-    - name: Get my user
-      ansible.builtin.set_fact:
-        remote_regular_user: "{{ ansible_env.SUDO_USER or ansible_user_id }}"
-
     - name: Install packages
       ansible.builtin.apt:
         name:
@@ -91,47 +94,6 @@
       ansible.builtin.apt:
         name: brave-browser
         state: present
-
-    # Docker Installation
-    - name: Ensure /etc/apt/keyrings directory exists
-      ansible.builtin.file:
-        path: /etc/apt/keyrings
-        state: directory
-        mode: "0755"
-
-    - name: Add Docker GPG key
-      ansible.builtin.get_url:
-        url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
-        dest: /etc/apt/keyrings/docker.asc
-        mode: "0644"
-
-    - name: Add Docker repository
-      ansible.builtin.apt_repository:
-        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
-        state: present
-        update_cache: true
-
-    - name: Install Docker packages
-      ansible.builtin.apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-          - docker-buildx-plugin
-          - docker-compose-plugin
-        state: present
-
-    - name: Ensure Docker service is running
-      ansible.builtin.service:
-        name: docker
-        state: started
-        enabled: true
-
-    - name: Add user to docker group
-      ansible.builtin.user:
-        name: "{{ remote_regular_user }}"
-        groups: docker
-        append: true
 
     # Snap Packages
     - name: Install Snap packages
