@@ -120,14 +120,13 @@
 
     # Snap Packages
     - name: Install Snap packages
-      community.general.snap:
-        name: "{{ item }}"
-        state: present
+      ansible.builtin.command: "snap install {{ item }}"
       loop: "{{ snap_packages }}"
       register: snap_result
-      failed_when:
-        - snap_result is failed
-        - item not in (snap_result.snaps_installed | default([]))
+      changed_when: snap_result.rc == 0
+      failed_when: false
+      async: 120
+      poll: 5
 
     # Font Installation
     - name: Ensure fonts directory exists
