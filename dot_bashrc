@@ -135,4 +135,3 @@ ex ()
     echo "'$1' is not a valid file"
   fi
 }
-alias config='/usr/bin/git --git-dir=/home/mtbossa/.cfg/ --work-tree=/home/mtbossa'
