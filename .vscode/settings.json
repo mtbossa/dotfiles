@@ -1,0 +1,55 @@
+{
+  "files.associations": {
+    // --- Shell / Zsh ---
+    "dot_zshrc": "shellscript",
+    "dot_zprofile": "shellscript",
+    "dot_zlogin": "shellscript",
+    "dot_zlogout": "shellscript",
+    "dot_bashrc": "shellscript",
+    "dot_profile": "shellscript",
+    "dot_*.sh": "shellscript",
+    "*.zsh": "shellscript",
+    "*.sh": "shellscript",
+    // --- Templates (chezmoi) ---
+    "*.sh.tmpl": "shellscript",
+    "*.zshrc.tmpl": "shellscript",
+    "*.tmpl": "plaintext",
+    // --- Git ---
+    "dot_gitconfig": "ini",
+    "dot_gitignore": "gitignore",
+    ".gitignore": "gitignore",
+    // --- Tmux ---
+    "dot_tmux.conf": "tmux",
+    "*.tmux": "tmux",
+    // --- Starship ---
+    "dot_config/starship.toml": "toml",
+    "*.toml": "toml",
+    // --- YAML (Ansible, config) ---
+    "*.yml": "yaml",
+    "*.yaml": "yaml",
+    // --- JSON ---
+    "*.json": "json",
+    // --- SSH ---
+    "dot_ssh/config": "ssh_config",
+    "ssh_config": "ssh_config",
+    // --- Env files ---
+    "*.env": "dotenv",
+    // --- Misc ---
+    "*.conf": "ini",
+    "*.service": "ini"
+  },
+  // Better shell support
+  "shellcheck.enable": true,
+  "shellcheck.run": "onType",
+  // YAML (Ansible-friendly)
+  "yaml.validate": true,
+  // Git quality of life
+  "git.enableSmartCommit": true,
+  "git.autofetch": true,
+  // Editor improvements
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  // Files
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true
+}
