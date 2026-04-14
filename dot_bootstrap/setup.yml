@@ -14,7 +14,6 @@
       - name: FiraCode
         pattern: "*FiraCode*"
     snap_packages:
-      - discord
       - postman
     zsh_plugins:
       - name: zsh-autosuggestions
@@ -104,8 +103,54 @@
         name: brave-browser
         state: present
 
-    # Snap Packages
-    - name: Install Docker via geerlingguy.docker role
+    # VS Code Installation
+    - name: Install VS Code
+      block:
+        - name: Add Microsoft GPG key for VS Code
+          ansible.builtin.shell: |
+            wget -qO- https://packages.microsoft.com/keys/microsoft.asc \
+              | gpg --dearmor > /etc/apt/keyrings/packages.microsoft.gpg
+          args:
+            executable: /bin/bash
+            creates: /etc/apt/keyrings/packages.microsoft.gpg
+
+        - name: Add VS Code apt repository
+          ansible.builtin.apt_repository:
+            repo: "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main"
+            state: present
+            filename: vscode
+            update_cache: true
+
+        - name: Install VS Code
+          ansible.builtin.apt:
+            name: code
+            state: present
+      rescue:
+        - name: Warn about VS Code installation failure
+          ansible.builtin.debug:
+            msg: "VS Code installation failed. Skipping and continuing with the rest of the setup."
+
+    # Discord Installation
+    - name: Install Discord
+      block:
+        - name: Download Discord .deb package
+          ansible.builtin.get_url:
+            url: "https://discord.com/api/download?platform=linux"
+            dest: /tmp/discord.deb
+            mode: "0644"
+            timeout: 120
+
+        - name: Install Discord .deb package
+          ansible.builtin.apt:
+            deb: /tmp/discord.deb
+            state: present
+      rescue:
+        - name: Warn about Discord installation failure
+          ansible.builtin.debug:
+            msg: "Discord installation failed. Skipping and continuing with the rest of the setup."
+
+    # Docker Installation
+    - name: Install Docker
       block:
         - name: Include geerlingguy.docker role
           ansible.builtin.include_role:
