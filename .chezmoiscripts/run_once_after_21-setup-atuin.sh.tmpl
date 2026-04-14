@@ -2,19 +2,21 @@
 #!/bin/bash
 set -euo pipefail
 
+ATUIN_BIN="${HOME}/.atuin/bin/atuin"
+
 cleanup() {
     bw lock &>/dev/null || true
     unset BW_SESSION 2>/dev/null || true
 }
 trap cleanup EXIT
 
-if ! command -v atuin &>/dev/null; then
-    echo "ERROR: atuin is not installed" >&2
+if [ ! -x "${ATUIN_BIN}" ]; then
+    echo "ERROR: atuin is not installed at ${ATUIN_BIN}" >&2
     exit 1
 fi
 
 # --- Login ---
-if atuin account info &>/dev/null; then
+if "${ATUIN_BIN}" account info &>/dev/null; then
     echo "Atuin already logged in, skipping login."
 else
     echo "Unlocking Bitwarden..."
@@ -28,20 +30,19 @@ else
     ATUIN_USERNAME=$(bw get username atuin --session "${BW_SESSION}")
     ATUIN_PASSWORD=$(bw get password atuin --session "${BW_SESSION}")
     ATUIN_KEY=$(bw get password atuin-key --session "${BW_SESSION}")
-    ATUIN_SYNC_ADDRESS=$(bw get password atuin-server --session "${BW_SESSION}")
 
-    atuin login -u "${ATUIN_USERNAME}" -p "${ATUIN_PASSWORD}" -k "${ATUIN_KEY}"
+    "${ATUIN_BIN}" login -u "${ATUIN_USERNAME}" -p "${ATUIN_PASSWORD}" -k "${ATUIN_KEY}"
     echo "Atuin login complete."
 fi
 
 # --- Sync address (idempotent) ---
 ATUIN_SYNC_ADDRESS=$(bw get password atuin-server --session "${BW_SESSION:-}")
 if [ -n "${ATUIN_SYNC_ADDRESS}" ]; then
-    atuin config set sync_address "${ATUIN_SYNC_ADDRESS}"
+    "${ATUIN_BIN}" config set sync_address "${ATUIN_SYNC_ADDRESS}"
     echo "Atuin sync address set."
 fi
 
-atuin sync
+"${ATUIN_BIN}" sync
 echo "Atuin sync enabled."
 
 {{ end -}}
