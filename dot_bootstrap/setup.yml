@@ -38,6 +38,7 @@
           - ca-certificates
           - software-properties-common
           - snapd
+          - unzip
         state: present
         update_cache: true
 
