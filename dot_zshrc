@@ -106,16 +106,7 @@ source $ZSH/oh-my-zsh.sh
 #
 # Example aliases
 # From https://www.atlassian.com/git/tutorials/dotfiles
-alias config='/usr/bin/git --git-dir=/home/mtbossa/.cfg/ --work-tree=/home/mtbossa'
 ###### end aliases ######
-
-# pnpm
-export PNPM_HOME="/home/mtbossa/.local/share/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
-esac
-# pnpm end
 
 # starship prompt
 eval "$(starship init zsh)"
