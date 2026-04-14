@@ -110,6 +110,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # atuin
 export PATH="$HOME/.atuin/bin:$PATH"
+. "$HOME/.atuin/bin/env"
 [[ -x "$HOME/.atuin/bin/atuin" ]] && eval "$(atuin init zsh)"
 
 eval "$(starship init zsh)"
