@@ -16,6 +16,11 @@
       - discord
       - postman
       - dbeaver-ce
+    zsh_plugins:
+      - name: zsh-autosuggestions
+        repo: https://github.com/zsh-users/zsh-autosuggestions
+      - name: zsh-syntax-highlighting
+        repo: https://github.com/zsh-users/zsh-syntax-highlighting
 
   tasks:
     - name: Get my user
@@ -186,3 +191,19 @@
         executable: /bin/bash
       become_user: "{{ remote_regular_user }}"
       when: not atuin_stat.stat.exists
+
+    # Oh My Zsh Custom Plugins
+    - name: Ensure oh-my-zsh-customization/plugins directory exists
+      ansible.builtin.file:
+        path: "/home/{{ remote_regular_user }}/oh-my-zsh-customization/plugins"
+        state: directory
+        mode: "0755"
+        owner: "{{ remote_regular_user }}"
+
+    - name: Clone Oh My Zsh custom plugins
+      ansible.builtin.git:
+        repo: "{{ item.repo }}"
+        dest: "/home/{{ remote_regular_user }}/oh-my-zsh-customization/plugins/{{ item.name }}"
+        update: true
+      become_user: "{{ remote_regular_user }}"
+      loop: "{{ zsh_plugins }}"
