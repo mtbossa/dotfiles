@@ -8,11 +8,9 @@ Personal dotfiles managed with [chezmoi](https://www.chezmoi.io/) and [Ansible](
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply mtbossa
 ```
 
-That's it. chezmoi installs itself, clones this repo over HTTPS, and runs the full setup.
-
 You will be prompted for:
 1. Your full name, email, and GitHub username (stored in chezmoi config, never committed)
-2. Your **Bitwarden master password** (to retrieve the GitHub PAT for SSH key registration)
+2. Your **Bitwarden master password** (when the SSH setup script runs)
 3. Your **sudo password** (when Ansible installs system packages)
 
 ---
@@ -102,7 +100,7 @@ Before bootstrapping a new machine, ensure your Bitwarden vault has:
 | `atuin` | username | Your atuin account username |
 | `atuin` | password | Your atuin account password |
 | `atuin-key` | password | Your atuin encryption key (shown on `atuin key`) |
-| `atuin-server` | uri | Your atuin sync server URL (e.g. `http://10.x.x.x:8888`) |
+| `atuin-server` | password | Your atuin sync server URL (e.g. `http://10.x.x.x:8888`) |
 
 Required PAT permissions (fine-grained token, resource owner = your account):
 

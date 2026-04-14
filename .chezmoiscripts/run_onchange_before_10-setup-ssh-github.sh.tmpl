@@ -3,7 +3,11 @@
 # config hash: {{ .email }}|{{ .githubUser }}|{{ .chezmoi.hostname }}
 set -euo pipefail
 
-export GH_TOKEN="{{ (bitwarden "item" "github-pat").login.password }}"
+cleanup() {
+    bw lock &>/dev/null || true
+    unset BW_SESSION GH_TOKEN 2>/dev/null || true
+}
+trap cleanup EXIT
 
 SSH_DIR="${HOME}/.ssh"
 KEY_PATH="${SSH_DIR}/id_ed25519"
@@ -25,13 +29,29 @@ fi
 
 PUB_KEY_BODY=$(awk '{print $1, $2}' "${KEY_PATH}.pub")
 
+# --- 2. Get GitHub token from Bitwarden ---
+echo "Unlocking Bitwarden..."
+if ! bw login --check &>/dev/null; then
+    BW_SESSION=$(bw login --raw)
+else
+    BW_SESSION=$(bw unlock --raw)
+fi
+export BW_SESSION
+
+GH_TOKEN=$(bw get password github-pat --session "${BW_SESSION}")
+if [ -z "${GH_TOKEN}" ]; then
+    echo "ERROR: Could not retrieve GitHub token from Bitwarden" >&2
+    exit 1
+fi
+export GH_TOKEN
+
 # Verify token works
 if ! gh api /user --jq '.login' >/dev/null; then
     echo "ERROR: GitHub token is invalid or lacks permissions" >&2
     exit 1
 fi
 
-# --- 2. Register SSH key with GitHub ---
+# --- 3. Register SSH key with GitHub ---
 
 register_key() {
     local key_type="$1"      # "authentication" or "signing"
@@ -58,10 +78,10 @@ register_key() {
 register_key "authentication" "/user/keys"
 register_key "signing" "/user/ssh_signing_keys"
 
-# --- 3. Create allowed_signers file ---
+# --- 4. Create allowed_signers file ---
 echo "{{ .email }} $(cat "${KEY_PATH}.pub")" > "${SSH_DIR}/allowed_signers"
 
-# --- 4. Configure SSH for GitHub ---
+# --- 5. Configure SSH for GitHub ---
 if ! grep -q "Host github.com" "${SSH_DIR}/config" 2>/dev/null; then
     cat >> "${SSH_DIR}/config" <<SSHEOF
 
@@ -75,7 +95,7 @@ SSHEOF
     echo "SSH config for GitHub added."
 fi
 
-# --- 5. Switch dotfiles remote to SSH ---
+# --- 6. Switch dotfiles remote to SSH ---
 CHEZMOI_DIR="{{ .chezmoi.sourceDir }}"
 CURRENT_REMOTE=$(git -C "${CHEZMOI_DIR}" remote get-url origin 2>/dev/null || echo "")
 if [[ "${CURRENT_REMOTE}" == https://* ]]; then
