@@ -149,6 +149,41 @@
           ansible.builtin.debug:
             msg: "Discord installation failed. Skipping and continuing with the rest of the setup."
 
+    # JetBrains Toolbox Installation
+    - name: Install JetBrains Toolbox
+      block:
+        - name: Check if JetBrains Toolbox is already installed
+          ansible.builtin.stat:
+            path: /opt/jetbrains-toolbox/jetbrains-toolbox
+          register: jetbrains_toolbox_stat
+
+        - name: Ensure /opt/jetbrains-toolbox directory exists
+          ansible.builtin.file:
+            path: /opt/jetbrains-toolbox
+            state: directory
+            mode: "0755"
+          when: not jetbrains_toolbox_stat.stat.exists
+
+        - name: Download and extract JetBrains Toolbox
+          ansible.builtin.shell: |
+            curl -sL "https://www.jetbrains.com/toolbox-app/download/download-thanks.html?platform=linux" \
+              -o /tmp/jetbrains-toolbox.tar.gz
+            tar -xzf /tmp/jetbrains-toolbox.tar.gz -C /opt/jetbrains-toolbox --strip-components=1
+          args:
+            executable: /bin/bash
+            creates: /opt/jetbrains-toolbox/jetbrains-toolbox
+          when: not jetbrains_toolbox_stat.stat.exists
+
+        - name: Create symlink for JetBrains Toolbox
+          ansible.builtin.file:
+            src: /opt/jetbrains-toolbox/jetbrains-toolbox
+            dest: /usr/local/bin/jetbrains-toolbox
+            state: link
+      rescue:
+        - name: Warn about JetBrains Toolbox installation failure
+          ansible.builtin.debug:
+            msg: "JetBrains Toolbox installation failed. Skipping and continuing with the rest of the setup."
+
     # Docker Installation
     - name: Install Docker
       block:
