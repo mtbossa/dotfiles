@@ -162,7 +162,7 @@
       block:
         - name: Check if JetBrains Toolbox is already installed
           ansible.builtin.stat:
-            path: /opt/jetbrains-toolbox/jetbrains-toolbox
+            path: /opt/jetbrains-toolbox/bin/jetbrains-toolbox
           register: jetbrains_toolbox_stat
 
         - name: Ensure /opt/jetbrains-toolbox directory exists
@@ -180,12 +180,12 @@
             tar -xzf /tmp/jetbrains-toolbox.tar.gz -C /opt/jetbrains-toolbox --strip-components=1
           args:
             executable: /bin/bash
-            creates: /opt/jetbrains-toolbox/jetbrains-toolbox
+            creates: /opt/jetbrains-toolbox/bin/jetbrains-toolbox
           when: not jetbrains_toolbox_stat.stat.exists
 
         - name: Create symlink for JetBrains Toolbox
           ansible.builtin.file:
-            src: /opt/jetbrains-toolbox/jetbrains-toolbox
+            src: /opt/jetbrains-toolbox/bin/jetbrains-toolbox
             dest: /usr/local/bin/jetbrains-toolbox
             state: link
       rescue:
