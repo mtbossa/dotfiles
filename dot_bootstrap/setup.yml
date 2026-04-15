@@ -142,11 +142,11 @@
     - name: Install Slack
       block:
         - name: Download Slack .deb package
-          ansible.builtin.get_url:
-            url: "https://slack.com/downloads/instructions/linux?ddl=1&build=deb"
-            dest: /tmp/slack.deb
-            mode: "0644"
-            timeout: 120
+          ansible.builtin.shell: >
+            curl -fsSL -o /tmp/slack.deb
+            "https://slack.com/downloads/instructions/linux?ddl=1&build=deb"
+          args:
+            executable: /bin/bash
 
         - name: Install Slack .deb package
           ansible.builtin.apt:
