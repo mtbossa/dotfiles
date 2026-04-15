@@ -166,8 +166,9 @@
 
         - name: Download and extract JetBrains Toolbox
           ansible.builtin.shell: |
-            curl -sL "https://www.jetbrains.com/toolbox-app/download/download-thanks.html?platform=linux" \
-              -o /tmp/jetbrains-toolbox.tar.gz
+            JB_URL=$(curl -s "https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release" \
+              | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['TBA'][0]['downloads']['linux']['link'])")
+            curl -L "$JB_URL" -o /tmp/jetbrains-toolbox.tar.gz
             tar -xzf /tmp/jetbrains-toolbox.tar.gz -C /opt/jetbrains-toolbox --strip-components=1
           args:
             executable: /bin/bash
