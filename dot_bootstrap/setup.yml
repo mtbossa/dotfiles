@@ -70,28 +70,17 @@
       when: not ohmyzsh_stat.stat.exists
 
     # Starship Installation
-    - name: Check if starship is available in apt
-      ansible.builtin.command: apt-cache show starship
-      register: starship_apt
-      ignore_errors: true
+    - name: Check if starship is already installed
+      ansible.builtin.command: which starship
+      register: starship_installed
       changed_when: false
+      failed_when: false
 
-    - name: Install Starship via apt
-      ansible.builtin.apt:
-        name: starship
-        state: present
-      when: starship_apt is succeeded
-
-    - name: Install Starship via curl installer (not in apt)
+    - name: Install Starship
       ansible.builtin.shell: "curl -sS https://starship.rs/install.sh | sh -s -- --yes"
       args:
         executable: /bin/bash
-        creates: /usr/local/bin/starship
-      when: starship_apt is failed
-
-    - name: Verify Starship installation
-      ansible.builtin.command: starship --version
-      changed_when: false
+      when: starship_installed.rc != 0
 
     # Brave Browser Installation
     - name: Add Brave Browser GPG key
