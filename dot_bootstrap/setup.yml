@@ -46,6 +46,7 @@
           - software-properties-common
           - snapd
           - unzip
+          - fzf
         state: present
         update_cache: true
 
@@ -269,6 +270,53 @@
         executable: /bin/bash
       become_user: "{{ remote_regular_user }}"
       when: not atuin_stat.stat.exists
+
+    # Eza Installation
+    - name: Install eza
+      block:
+        - name: Add eza GPG key
+          ansible.builtin.shell: |
+            wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
+          args:
+            executable: /bin/bash
+            creates: /etc/apt/keyrings/gierens.gpg
+
+        - name: Add eza apt repository
+          ansible.builtin.apt_repository:
+            repo: "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main"
+            state: present
+            filename: gierens
+            update_cache: true
+
+        - name: Set correct permissions on eza keyring and list
+          ansible.builtin.file:
+            path: "{{ item }}"
+            mode: "0644"
+          loop:
+            - /etc/apt/keyrings/gierens.gpg
+            - /etc/apt/sources.list.d/gierens.list
+
+        - name: Install eza
+          ansible.builtin.apt:
+            name: eza
+            state: present
+      rescue:
+        - name: Warn about eza installation failure
+          ansible.builtin.debug:
+            msg: "eza installation failed. Skipping and continuing with the rest of the setup."
+
+    # Zoxide Installation
+    - name: Check if zoxide is installed
+      ansible.builtin.stat:
+        path: "/home/{{ remote_regular_user }}/.local/bin/zoxide"
+      register: zoxide_stat
+
+    - name: Install zoxide
+      ansible.builtin.shell: "curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      when: not zoxide_stat.stat.exists
 
     # Claude CLI Installation
     - name: Check if Claude CLI is installed
