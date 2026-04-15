@@ -15,6 +15,7 @@
         pattern: "*FiraCode*"
     snap_packages:
       - postman
+      - slack
     zsh_plugins:
       - name: zsh-autosuggestions
         repo: https://github.com/zsh-users/zsh-autosuggestions
@@ -280,6 +281,19 @@
         executable: /bin/bash
       become_user: "{{ remote_regular_user }}"
       when: not atuin_stat.stat.exists
+
+    # Claude CLI Installation
+    - name: Check if Claude CLI is installed
+      ansible.builtin.stat:
+        path: "/home/{{ remote_regular_user }}/.claude/local/claude"
+      register: claude_stat
+
+    - name: Install Claude CLI
+      ansible.builtin.shell: "curl -fsSL https://claude.ai/install.sh | bash"
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      when: not claude_stat.stat.exists
 
     # Oh My Zsh Custom Plugins
     - name: Ensure oh-my-zsh-customization/plugins directory exists
