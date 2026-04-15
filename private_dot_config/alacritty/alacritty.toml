@@ -1,4 +1,6 @@
 import = [ "/home/mtbossa/.config/alacritty/themes/iterm.toml" ]
+
+[colors]
 draw_bold_text_with_bright_colors = true
 
 [window]
@@ -28,7 +30,7 @@ save_to_clipboard = true
 [cursor.style]
 shape = "Beam"
 
-[[key_bindings]]
-key = "Return"
-mods = "Super|Shift"
-action = "SpawnNewInstance"
+[keyboard]
+bindings = [
+    { key = "Return", mods = "Super|Shift", action = "SpawnNewInstance" },
+]
