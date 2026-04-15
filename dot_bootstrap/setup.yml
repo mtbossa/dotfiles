@@ -106,6 +106,14 @@
     # VS Code Installation
     - name: Install VS Code
       block:
+        - name: Remove conflicting VS Code apt source files
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - /etc/apt/sources.list.d/vscode.sources
+            - /usr/share/keyrings/microsoft.gpg
+
         - name: Add Microsoft GPG key for VS Code
           ansible.builtin.shell: |
             wget -qO- https://packages.microsoft.com/keys/microsoft.asc \
