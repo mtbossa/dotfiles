@@ -127,25 +127,6 @@
           ansible.builtin.debug:
             msg: "VS Code installation failed. Skipping and continuing with the rest of the setup."
 
-    # Slack Installation
-    - name: Install Slack
-      block:
-        - name: Download Slack .deb package
-          ansible.builtin.get_url:
-            url: "https://downloads.slack-edge.com/desktop-releases/linux/x64/4.47.69/slack-desktop-4.47.69-amd64.deb"
-            dest: /tmp/slack.deb
-            mode: "0644"
-            timeout: 120
-
-        - name: Install Slack .deb package
-          ansible.builtin.apt:
-            deb: /tmp/slack.deb
-            state: present
-      rescue:
-        - name: Warn about Slack installation failure
-          ansible.builtin.debug:
-            msg: "Slack installation failed. Skipping and continuing with the rest of the setup."
-
     # Discord Installation
     - name: Install Discord
       block:
