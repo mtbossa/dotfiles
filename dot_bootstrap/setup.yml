@@ -46,7 +46,6 @@
           - software-properties-common
           - snapd
           - unzip
-          - fzf
         state: present
         update_cache: true
 
@@ -325,6 +324,37 @@
         dest: "/home/{{ remote_regular_user }}/.local/share/eza"
         update: true
       become_user: "{{ remote_regular_user }}"
+
+    # fzf Installation
+    - name: Ensure ~/.local/bin directory exists for fzf
+      ansible.builtin.file:
+        path: "/home/{{ remote_regular_user }}/.local/bin"
+        state: directory
+        mode: "0755"
+        owner: "{{ remote_regular_user }}"
+        group: "{{ remote_regular_user }}"
+
+    - name: Check if fzf is installed
+      ansible.builtin.stat:
+        path: "/home/{{ remote_regular_user }}/.local/bin/fzf"
+      register: fzf_stat
+
+    - name: Install fzf latest binary
+      ansible.builtin.shell: |
+        ARCH=$(uname -m)
+        case $ARCH in
+          x86_64) ARCH="amd64" ;;
+          aarch64) ARCH="arm64" ;;
+          armv7*) ARCH="armv7" ;;
+        esac
+        FZF_VERSION=$(curl -fsSL https://api.github.com/repos/junegunn/fzf/releases/latest \
+          | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
+        curl -fsSL "https://github.com/junegunn/fzf/releases/download/v${FZF_VERSION}/fzf-${FZF_VERSION}-linux_${ARCH}.tar.gz" \
+          | tar -xz -C "$HOME/.local/bin" fzf
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      when: not fzf_stat.stat.exists
 
     # Zoxide Installation
     - name: Check if zoxide is installed
