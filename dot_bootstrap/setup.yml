@@ -46,6 +46,7 @@
           - software-properties-common
           - snapd
           - unzip
+          - fzf
         state: present
         update_cache: true
 
@@ -269,6 +270,74 @@
         executable: /bin/bash
       become_user: "{{ remote_regular_user }}"
       when: not atuin_stat.stat.exists
+
+    # Eza Installation
+    - name: Ensure /etc/apt/keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Add eza GPG key
+      ansible.builtin.shell: |
+        wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
+      args:
+        executable: /bin/bash
+        creates: /etc/apt/keyrings/gierens.gpg
+
+    - name: Set permissions on eza GPG key and apt list
+      ansible.builtin.file:
+        path: "{{ item }}"
+        mode: "0644"
+      loop:
+        - /etc/apt/keyrings/gierens.gpg
+      failed_when: false
+
+    - name: Add eza apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main"
+        state: present
+        filename: gierens
+        update_cache: true
+
+    - name: Set permissions on eza apt list
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/gierens.list
+        mode: "0644"
+      failed_when: false
+
+    - name: Install eza
+      ansible.builtin.apt:
+        name: eza
+        state: present
+
+    - name: Ensure eza completions directory exists
+      ansible.builtin.file:
+        path: "/home/{{ remote_regular_user }}/.local/share/eza"
+        state: directory
+        mode: "0755"
+        owner: "{{ remote_regular_user }}"
+        group: "{{ remote_regular_user }}"
+
+    - name: Clone eza repository for zsh completions
+      ansible.builtin.git:
+        repo: https://github.com/eza-community/eza.git
+        dest: "/home/{{ remote_regular_user }}/.local/share/eza"
+        update: true
+      become_user: "{{ remote_regular_user }}"
+
+    # Zoxide Installation
+    - name: Check if zoxide is installed
+      ansible.builtin.stat:
+        path: "/home/{{ remote_regular_user }}/.local/bin/zoxide"
+      register: zoxide_stat
+
+    - name: Install zoxide
+      ansible.builtin.shell: "curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      when: not zoxide_stat.stat.exists
 
     # Claude CLI Installation
     - name: Check if Claude CLI is installed

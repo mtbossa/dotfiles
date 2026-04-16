@@ -75,6 +75,9 @@ ZSH_CUSTOM=$HOME/oh-my-zsh-customization
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting docker docker-compose)
 
+# eza zsh completions
+export FPATH="$HOME/.local/share/eza/completions/zsh:$FPATH"
+
 source $ZSH/oh-my-zsh.sh
 
 # User configuration
@@ -107,6 +110,12 @@ source $ZSH/oh-my-zsh.sh
 # mise
 export PATH="$HOME/.local/bin:$PATH"
 [[ -x "$HOME/.local/bin/mise" ]] && eval "$(mise activate zsh)"
+
+# fzf
+source <(fzf --zsh)
+
+# zoxide
+eval "$(zoxide init zsh)"
 
 # atuin
 export PATH="$HOME/.atuin/bin:$PATH"
