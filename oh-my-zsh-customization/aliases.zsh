@@ -1,3 +1,8 @@
+alias ls="eza --icons"
+alias ll="eza -lh --icons --git"
+alias la="eza -lah --icons --git"
+alias lt="eza --tree --icons"
+
 alias cl="clear"
 alias lzg="lazygit"
 
@@ -9,7 +14,7 @@ alias sa="sail artisan"
 alias pf="clear && sail test --filter"
 alias sdf="clear && sail dusk --filter"
 alias satp="sail artisan test --parallel"
-alias samfs="sail artisan migrate:fresh --seed" 
+alias samfs="sail artisan migrate:fresh --seed"
 alias sailrestart="sail down && sud"
 alias sa="s artisan"
 alias sc="s composer"

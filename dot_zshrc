@@ -123,3 +123,4 @@ export PATH="$HOME/.atuin/bin:$PATH"
 [[ -x "$HOME/.atuin/bin/atuin" ]] && eval "$(atuin init zsh)"
 
 eval "$(starship init zsh)"
+[[ -x "$HOME/.local/bin/zoxide" ]] && eval "$(zoxide init zsh)"
