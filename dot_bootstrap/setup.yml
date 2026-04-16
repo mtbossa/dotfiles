@@ -151,14 +151,16 @@
       block:
         - name: Check if JetBrains Toolbox is already installed
           ansible.builtin.stat:
-            path: /opt/jetbrains-toolbox/bin/jetbrains-toolbox
+            path: "/home/{{ remote_regular_user }}/.local/share/JetBrains/Toolbox/jetbrains-toolbox"
           register: jetbrains_toolbox_stat
 
-        - name: Ensure /opt/jetbrains-toolbox directory exists
+        - name: Ensure JetBrains Toolbox directory exists
           ansible.builtin.file:
-            path: /opt/jetbrains-toolbox
+            path: "/home/{{ remote_regular_user }}/.local/share/JetBrains/Toolbox"
             state: directory
             mode: "0755"
+            owner: "{{ remote_regular_user }}"
+            group: "{{ remote_regular_user }}"
           when: not jetbrains_toolbox_stat.stat.exists
 
         - name: Download and extract JetBrains Toolbox
@@ -166,15 +168,16 @@
             JB_URL=$(curl -s "https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release" \
               | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['TBA'][0]['downloads']['linux']['link'])")
             curl -L "$JB_URL" -o /tmp/jetbrains-toolbox.tar.gz
-            tar -xzf /tmp/jetbrains-toolbox.tar.gz -C /opt/jetbrains-toolbox --strip-components=1
+            tar -xzf /tmp/jetbrains-toolbox.tar.gz -C "$HOME/.local/share/JetBrains/Toolbox" --strip-components=1
           args:
             executable: /bin/bash
-            creates: /opt/jetbrains-toolbox/bin/jetbrains-toolbox
+            creates: "/home/{{ remote_regular_user }}/.local/share/JetBrains/Toolbox/jetbrains-toolbox"
+          become_user: "{{ remote_regular_user }}"
           when: not jetbrains_toolbox_stat.stat.exists
 
         - name: Create symlink for JetBrains Toolbox
           ansible.builtin.file:
-            src: /opt/jetbrains-toolbox/bin/jetbrains-toolbox
+            src: "/home/{{ remote_regular_user }}/.local/share/JetBrains/Toolbox/jetbrains-toolbox"
             dest: /usr/local/bin/jetbrains-toolbox
             state: link
       rescue:
