@@ -7,6 +7,9 @@
 
   vars:
     remote_regular_user: "{{ ansible_env.SUDO_USER | default(ansible_user_id) }}"
+    install_slack: false
+    install_discord: false
+    install_jetbrains_toolbox: false
     nerd_fonts_version: "v3.2.1"
     nerd_fonts:
       - name: JetBrainsMono
@@ -127,8 +130,23 @@
           ansible.builtin.debug:
             msg: "VS Code installation failed. Skipping and continuing with the rest of the setup."
 
+    # Slack Installation
+    - name: Install Slack
+      when: install_slack | bool
+      block:
+        - name: Install Slack via snap
+          ansible.builtin.command: "timeout 120 snap install slack --classic"
+          register: slack_snap_result
+          changed_when: slack_snap_result.rc == 0
+          failed_when: false
+      rescue:
+        - name: Warn about Slack installation failure
+          ansible.builtin.debug:
+            msg: "Slack installation failed. Skipping and continuing with the rest of the setup."
+
     # Discord Installation
     - name: Install Discord
+      when: install_discord | bool
       block:
         - name: Download Discord .deb package
           ansible.builtin.get_url:
@@ -148,6 +166,7 @@
 
     # JetBrains Toolbox Installation
     - name: Install JetBrains Toolbox
+      when: install_jetbrains_toolbox | bool
       block:
         - name: Check if JetBrains Toolbox is already installed
           ansible.builtin.stat:

@@ -1,11 +1,17 @@
 {{- $name := promptStringOnce . "name" "Full name" -}}
 {{- $email := promptStringOnce . "email" "Email address" -}}
 {{- $githubUser := promptStringOnce . "githubUser" "GitHub username" -}}
+{{- $installSlack := promptBoolOnce . "installSlack" "Install Slack" -}}
+{{- $installDiscord := promptBoolOnce . "installDiscord" "Install Discord" -}}
+{{- $installJetbrainsToolbox := promptBoolOnce . "installJetbrainsToolbox" "Install JetBrains Toolbox" -}}
 
 [data]
     name = {{ $name | quote }}
     email = {{ $email | quote }}
     githubUser = {{ $githubUser | quote }}
+    installSlack = {{ $installSlack }}
+    installDiscord = {{ $installDiscord }}
+    installJetbrainsToolbox = {{ $installJetbrainsToolbox }}
 
 [edit]
     command = "code"
