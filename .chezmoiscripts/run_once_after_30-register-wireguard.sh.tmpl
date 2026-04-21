@@ -7,8 +7,6 @@ BW_ITEM="{{ .wgBitwardenItem }}"
 PEER_NAME="{{ .chezmoi.hostname }}"
 TMP_DIR=$(mktemp -d -t wg-bootstrap.XXXXXX)
 TMP_KEY="${TMP_DIR}/id"
-TMP_PRIV="${TMP_DIR}/privkey"
-TMP_PUB="${TMP_DIR}/pubkey"
 TUNNEL_PID=""
 
 cleanup() {
@@ -18,7 +16,7 @@ cleanup() {
         rm -rf "${TMP_DIR}"
     fi
     bw lock &>/dev/null || true
-    unset BW_SESSION API_KEY PEER_PRIV 2>/dev/null || true
+    unset BW_SESSION API_KEY 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -76,14 +74,7 @@ bw get attachment "${ATTACHMENT_NAME}" \
     --session "${BW_SESSION}" >/dev/null
 chmod 600 "${TMP_KEY}"
 
-# --- 5. Generate a WireGuard keypair locally ---
-echo "Generating WireGuard keypair..."
-umask 077
-wg genkey | tee "${TMP_PRIV}" | wg pubkey > "${TMP_PUB}"
-PEER_PUB=$(cat "${TMP_PUB}")
-PEER_PRIV=$(cat "${TMP_PRIV}")
-
-# --- 6. Open the SSH tunnel to the WGD LXC ---
+# --- 5. Open the SSH tunnel to the WGD LXC ---
 echo "Opening SSH tunnel to ${SSH_USER}@${SSH_HOST}:${SSH_PORT}..."
 ssh -i "${TMP_KEY}" -f -N \
     -p "${SSH_PORT}" \
@@ -103,39 +94,11 @@ for _ in $(seq 1 10); do
     sleep 1
 done
 
-# --- 7. Register the peer via WGD API ---
-# Payload shape targets WGD 4.x `/api/addPeers/<iface>`. If your WGD version
-# differs, inspect your instance's Swagger / docs and adjust the jq body below.
+# --- 6. Register the peer via WGD API ---
+# Empty-ish body — WGD generates the keypair and applies defaults from
+# Settings > Peer Settings. We only set `name` so the peer is identifiable.
 echo "Registering peer '${PEER_NAME}' with WGD API..."
-PAYLOAD=$(jq -n \
-    --arg key  "${PEER_PUB}" \
-    --arg name "${PEER_NAME}" \
-    --arg ep   "${ENDPOINT}" \
-    '{
-        bulkAdd: false,
-        public_key: $key,
-        name: $name,
-        allowed_ips: [],
-        endpoint_allowed_ip: "0.0.0.0/0, ::/0",
-        DNS: "1.1.1.1",
-        mtu: 1420,
-        keepalive: 21,
-        preshared_key: "",
-        remote_endpoint: $ep,
-        Peers: [
-            {
-                id: $key,
-                name: $name,
-                allowed_ip: "",
-                DNS: "1.1.1.1",
-                endpoint_allowed_ip: "0.0.0.0/0, ::/0",
-                mtu: 1420,
-                keepalive: 21,
-                preshared_key: "",
-                remote_endpoint: $ep
-            }
-        ]
-    }')
+PAYLOAD=$(jq -n --arg name "${PEER_NAME}" '{name: $name}')
 
 ADD_RESPONSE=$(curl -sS -X POST \
     "http://127.0.0.1:10086/api/addPeers/${WG_IFACE}" \
@@ -149,38 +112,31 @@ if ! jq -e '.status == true' <<<"${ADD_RESPONSE}" >/dev/null 2>&1; then
     exit 1
 fi
 
-# --- 8. Download the rendered peer config ---
+PEER_PUB=$(jq -r '.data[0].id' <<<"${ADD_RESPONSE}")
+if [ -z "${PEER_PUB}" ] || [ "${PEER_PUB}" = "null" ]; then
+    echo "ERROR: could not read peer id from addPeers response:" >&2
+    jq . <<<"${ADD_RESPONSE}" >&2
+    exit 1
+fi
+
+# --- 7. Download the rendered peer config ---
 echo "Downloading rendered peer config..."
 ENCODED_KEY=$(jq -rn --arg v "${PEER_PUB}" '$v|@uri')
 DL_RESPONSE=$(curl -sS \
     "http://127.0.0.1:10086/api/downloadPeer/${WG_IFACE}?id=${ENCODED_KEY}" \
     -H "wg-dashboard-apikey: ${API_KEY}")
 
-RAW_CONFIG=$(jq -r '.data.file // .data // empty' <<<"${DL_RESPONSE}")
-if [ -z "${RAW_CONFIG}" ]; then
+FINAL_CONFIG=$(jq -r '.data.file // empty' <<<"${DL_RESPONSE}")
+if [ -z "${FINAL_CONFIG}" ]; then
     echo "ERROR: could not extract config from downloadPeer response:" >&2
     jq . <<<"${DL_RESPONSE}" >&2 || echo "${DL_RESPONSE}" >&2
     exit 1
 fi
 
-# --- 9. Substitute our real private key into the config ---
-# WGD returns the config with a placeholder or an empty PrivateKey line. Replace
-# whatever value it shipped with the private key we generated locally.
-FINAL_CONFIG=$(awk -v priv="${PEER_PRIV}" '
-    BEGIN { replaced = 0 }
-    /^PrivateKey[[:space:]]*=/ && !replaced { print "PrivateKey = " priv; replaced = 1; next }
-    { print }
-' <<<"${RAW_CONFIG}")
-
-if ! grep -q "^PrivateKey = ${PEER_PRIV}$" <<<"${FINAL_CONFIG}"; then
-    echo "ERROR: failed to inject private key into config" >&2
-    exit 1
-fi
-
-# --- 10. Write config and bring the interface up ---
+# --- 8. Write config and bring the interface up ---
 echo "Writing ${WG_CONF}..."
 sudo install -m 600 -o root -g root /dev/null "${WG_CONF}"
-echo "${FINAL_CONFIG}" | sudo tee "${WG_CONF}" >/dev/null
+printf '%s\n' "${FINAL_CONFIG}" | sudo tee "${WG_CONF}" >/dev/null
 
 echo "Enabling wg-quick@${WG_IFACE}..."
 sudo systemctl enable --now "wg-quick@${WG_IFACE}"
