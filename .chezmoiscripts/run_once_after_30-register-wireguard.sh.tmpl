@@ -43,9 +43,8 @@ SSH_PORT=$(get_field ssh_port)
 SSH_USER=$(get_field ssh_user)
 API_KEY=$(get_field api_key)
 WG_IFACE=$(get_field wg_interface)
-ENDPOINT=$(get_field endpoint)
 
-for var in SSH_HOST SSH_PORT SSH_USER API_KEY WG_IFACE ENDPOINT; do
+for var in SSH_HOST SSH_PORT SSH_USER API_KEY WG_IFACE; do
     val="${!var}"
     if [ -z "${val}" ] || [ "${val}" = "null" ]; then
         echo "ERROR: Bitwarden item '${BW_ITEM}' is missing custom field '${var,,}'" >&2
