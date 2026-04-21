@@ -1,0 +1,192 @@
+{{ if and (eq .chezmoi.os "linux") .registerWireguard -}}
+#!/bin/bash
+# config hash: {{ .chezmoi.hostname }}|{{ .wgBitwardenItem }}
+set -euo pipefail
+
+BW_ITEM="{{ .wgBitwardenItem }}"
+PEER_NAME="{{ .chezmoi.hostname }}"
+TMP_DIR=$(mktemp -d -t wg-bootstrap.XXXXXX)
+TMP_KEY="${TMP_DIR}/id"
+TMP_PRIV="${TMP_DIR}/privkey"
+TMP_PUB="${TMP_DIR}/pubkey"
+TUNNEL_PID=""
+
+cleanup() {
+    [ -n "${TUNNEL_PID}" ] && kill "${TUNNEL_PID}" 2>/dev/null || true
+    if [ -d "${TMP_DIR}" ]; then
+        find "${TMP_DIR}" -type f -exec shred -u {} \; 2>/dev/null || true
+        rm -rf "${TMP_DIR}"
+    fi
+    bw lock &>/dev/null || true
+    unset BW_SESSION API_KEY PEER_PRIV 2>/dev/null || true
+}
+trap cleanup EXIT
+
+# --- 1. Unlock Bitwarden ---
+echo "Unlocking Bitwarden..."
+if ! bw login --check &>/dev/null; then
+    BW_SESSION=$(bw login --raw)
+else
+    BW_SESSION=$(bw unlock --raw)
+fi
+export BW_SESSION
+
+# --- 2. Fetch the bootstrap item ---
+echo "Fetching '${BW_ITEM}' from Bitwarden..."
+ITEM_JSON=$(bw get item "${BW_ITEM}" --session "${BW_SESSION}")
+ITEM_ID=$(jq -r '.id' <<<"${ITEM_JSON}")
+
+get_field() {
+    jq -r --arg n "$1" '.fields[] | select(.name==$n) | .value' <<<"${ITEM_JSON}"
+}
+
+SSH_HOST=$(get_field ssh_host)
+SSH_PORT=$(get_field ssh_port)
+SSH_USER=$(get_field ssh_user)
+API_KEY=$(get_field api_key)
+WG_IFACE=$(get_field wg_interface)
+ENDPOINT=$(get_field endpoint)
+
+for var in SSH_HOST SSH_PORT SSH_USER API_KEY WG_IFACE ENDPOINT; do
+    val="${!var}"
+    if [ -z "${val}" ] || [ "${val}" = "null" ]; then
+        echo "ERROR: Bitwarden item '${BW_ITEM}' is missing custom field '${var,,}'" >&2
+        exit 1
+    fi
+done
+
+WG_CONF="/etc/wireguard/${WG_IFACE}.conf"
+
+# --- 3. Skip if already configured ---
+if sudo test -f "${WG_CONF}"; then
+    echo "${WG_CONF} already exists; skipping WireGuard registration."
+    exit 0
+fi
+
+# --- 4. Fetch the SSH bootstrap key attachment ---
+ATTACHMENT_NAME=$(jq -r '.attachments[0].fileName' <<<"${ITEM_JSON}")
+if [ -z "${ATTACHMENT_NAME}" ] || [ "${ATTACHMENT_NAME}" = "null" ]; then
+    echo "ERROR: Bitwarden item '${BW_ITEM}' has no SSH key attachment" >&2
+    exit 1
+fi
+echo "Fetching SSH bootstrap key..."
+bw get attachment "${ATTACHMENT_NAME}" \
+    --itemid "${ITEM_ID}" \
+    --output "${TMP_KEY}" \
+    --session "${BW_SESSION}" >/dev/null
+chmod 600 "${TMP_KEY}"
+
+# --- 5. Generate a WireGuard keypair locally ---
+echo "Generating WireGuard keypair..."
+umask 077
+wg genkey | tee "${TMP_PRIV}" | wg pubkey > "${TMP_PUB}"
+PEER_PUB=$(cat "${TMP_PUB}")
+PEER_PRIV=$(cat "${TMP_PRIV}")
+
+# --- 6. Open the SSH tunnel to the WGD LXC ---
+echo "Opening SSH tunnel to ${SSH_USER}@${SSH_HOST}:${SSH_PORT}..."
+ssh -i "${TMP_KEY}" -f -N \
+    -p "${SSH_PORT}" \
+    -L 10086:127.0.0.1:10086 \
+    -o ExitOnForwardFailure=yes \
+    -o StrictHostKeyChecking=accept-new \
+    -o UserKnownHostsFile="${TMP_DIR}/known_hosts" \
+    -o ConnectTimeout=15 \
+    -o ServerAliveInterval=10 \
+    "${SSH_USER}@${SSH_HOST}"
+TUNNEL_PID=$(pgrep -f "ssh.*-L 10086:127.0.0.1:10086.*${SSH_USER}@${SSH_HOST}" | head -1)
+[ -z "${TUNNEL_PID}" ] && { echo "ERROR: could not locate backgrounded ssh tunnel" >&2; exit 1; }
+
+# Wait for the tunnel to actually accept connections
+for _ in $(seq 1 10); do
+    if (echo >/dev/tcp/127.0.0.1/10086) 2>/dev/null; then break; fi
+    sleep 1
+done
+
+# --- 7. Register the peer via WGD API ---
+# Payload shape targets WGD 4.x `/api/addPeers/<iface>`. If your WGD version
+# differs, inspect your instance's Swagger / docs and adjust the jq body below.
+echo "Registering peer '${PEER_NAME}' with WGD API..."
+PAYLOAD=$(jq -n \
+    --arg key  "${PEER_PUB}" \
+    --arg name "${PEER_NAME}" \
+    --arg ep   "${ENDPOINT}" \
+    '{
+        bulkAdd: false,
+        public_key: $key,
+        name: $name,
+        allowed_ips: [],
+        endpoint_allowed_ip: "0.0.0.0/0, ::/0",
+        DNS: "1.1.1.1",
+        mtu: 1420,
+        keepalive: 21,
+        preshared_key: "",
+        remote_endpoint: $ep,
+        Peers: [
+            {
+                id: $key,
+                name: $name,
+                allowed_ip: "",
+                DNS: "1.1.1.1",
+                endpoint_allowed_ip: "0.0.0.0/0, ::/0",
+                mtu: 1420,
+                keepalive: 21,
+                preshared_key: "",
+                remote_endpoint: $ep
+            }
+        ]
+    }')
+
+ADD_RESPONSE=$(curl -sS -X POST \
+    "http://127.0.0.1:10086/api/addPeers/${WG_IFACE}" \
+    -H "wg-dashboard-apikey: ${API_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "${PAYLOAD}")
+
+if ! jq -e '.status == true' <<<"${ADD_RESPONSE}" >/dev/null 2>&1; then
+    echo "ERROR: WGD API rejected addPeers request:" >&2
+    jq . <<<"${ADD_RESPONSE}" >&2 || echo "${ADD_RESPONSE}" >&2
+    exit 1
+fi
+
+# --- 8. Download the rendered peer config ---
+echo "Downloading rendered peer config..."
+ENCODED_KEY=$(jq -rn --arg v "${PEER_PUB}" '$v|@uri')
+DL_RESPONSE=$(curl -sS \
+    "http://127.0.0.1:10086/api/downloadPeer/${WG_IFACE}?id=${ENCODED_KEY}" \
+    -H "wg-dashboard-apikey: ${API_KEY}")
+
+RAW_CONFIG=$(jq -r '.data.file // .data // empty' <<<"${DL_RESPONSE}")
+if [ -z "${RAW_CONFIG}" ]; then
+    echo "ERROR: could not extract config from downloadPeer response:" >&2
+    jq . <<<"${DL_RESPONSE}" >&2 || echo "${DL_RESPONSE}" >&2
+    exit 1
+fi
+
+# --- 9. Substitute our real private key into the config ---
+# WGD returns the config with a placeholder or an empty PrivateKey line. Replace
+# whatever value it shipped with the private key we generated locally.
+FINAL_CONFIG=$(awk -v priv="${PEER_PRIV}" '
+    BEGIN { replaced = 0 }
+    /^PrivateKey[[:space:]]*=/ && !replaced { print "PrivateKey = " priv; replaced = 1; next }
+    { print }
+' <<<"${RAW_CONFIG}")
+
+if ! grep -q "^PrivateKey = ${PEER_PRIV}$" <<<"${FINAL_CONFIG}"; then
+    echo "ERROR: failed to inject private key into config" >&2
+    exit 1
+fi
+
+# --- 10. Write config and bring the interface up ---
+echo "Writing ${WG_CONF}..."
+sudo install -m 600 -o root -g root /dev/null "${WG_CONF}"
+echo "${FINAL_CONFIG}" | sudo tee "${WG_CONF}" >/dev/null
+
+echo "Enabling wg-quick@${WG_IFACE}..."
+sudo systemctl enable --now "wg-quick@${WG_IFACE}"
+
+echo ""
+echo "WireGuard peer '${PEER_NAME}' registered and interface up."
+sudo wg show "${WG_IFACE}"
+
+{{ end -}}

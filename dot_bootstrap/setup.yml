@@ -10,6 +10,7 @@
     install_slack: false
     install_discord: false
     install_jetbrains_toolbox: false
+    register_wireguard: false
     nerd_fonts_version: "v3.2.1"
     nerd_fonts:
       - name: JetBrainsMono
@@ -129,6 +130,18 @@
         - name: Warn about VS Code installation failure
           ansible.builtin.debug:
             msg: "VS Code installation failed. Skipping and continuing with the rest of the setup."
+
+    # WireGuard tooling (needed by the chezmoi register-wireguard script)
+    - name: Install WireGuard tooling
+      when: register_wireguard | bool
+      ansible.builtin.apt:
+        name:
+          - wireguard
+          - wireguard-tools
+          - jq
+          - openssh-client
+        state: present
+        update_cache: true
 
     # Slack Installation
     - name: Install Slack
