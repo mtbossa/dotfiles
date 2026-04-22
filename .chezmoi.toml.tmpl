@@ -5,10 +5,6 @@
 {{- $installDiscord := promptBoolOnce . "installDiscord" "Install Discord" -}}
 {{- $installJetbrainsToolbox := promptBoolOnce . "installJetbrainsToolbox" "Install JetBrains Toolbox" -}}
 {{- $registerWireguard := promptBoolOnce . "registerWireguard" "Register this machine as a WireGuard peer" -}}
-{{- $wgBitwardenItem := "" -}}
-{{- if $registerWireguard -}}
-{{-   $wgBitwardenItem = promptStringOnce . "wgBitwardenItem" "Bitwarden item name holding WG bootstrap secrets" "wg-bootstrap" -}}
-{{- end -}}
 
 [data]
     name = {{ $name | quote }}
@@ -18,7 +14,6 @@
     installDiscord = {{ $installDiscord }}
     installJetbrainsToolbox = {{ $installJetbrainsToolbox }}
     registerWireguard = {{ $registerWireguard }}
-    wgBitwardenItem = {{ $wgBitwardenItem | quote }}
 
 [edit]
     command = "code"

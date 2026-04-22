@@ -1,9 +1,9 @@
 {{ if and (eq .chezmoi.os "linux") .registerWireguard -}}
 #!/bin/bash
-# config hash: {{ .chezmoi.hostname }}|{{ .wgBitwardenItem }}
+# config hash: {{ .chezmoi.hostname }}
 set -euo pipefail
 
-BW_ITEM="{{ .wgBitwardenItem }}"
+BW_ITEM="wg-bootstrap"
 PEER_NAME="{{ .chezmoi.hostname }}"
 TMP_DIR=$(mktemp -d -t wg-bootstrap.XXXXXX)
 TMP_KEY="${TMP_DIR}/id"
@@ -32,7 +32,6 @@ export BW_SESSION
 # --- 2. Fetch the bootstrap item ---
 echo "Fetching '${BW_ITEM}' from Bitwarden..."
 ITEM_JSON=$(bw get item "${BW_ITEM}" --session "${BW_SESSION}")
-ITEM_ID=$(jq -r '.id' <<<"${ITEM_JSON}")
 
 get_field() {
     jq -r --arg n "$1" '.fields[] | select(.name==$n) | .value' <<<"${ITEM_JSON}"
@@ -60,17 +59,14 @@ if sudo test -f "${WG_CONF}"; then
     exit 0
 fi
 
-# --- 4. Fetch the SSH bootstrap key attachment ---
-ATTACHMENT_NAME=$(jq -r '.attachments[0].fileName' <<<"${ITEM_JSON}")
-if [ -z "${ATTACHMENT_NAME}" ] || [ "${ATTACHMENT_NAME}" = "null" ]; then
-    echo "ERROR: Bitwarden item '${BW_ITEM}' has no SSH key attachment" >&2
+# --- 4. Fetch the SSH bootstrap key from the secure note body ---
+echo "Fetching SSH bootstrap key..."
+umask 077
+bw get notes "${BW_ITEM}" --session "${BW_SESSION}" > "${TMP_KEY}"
+if ! grep -q "BEGIN .*PRIVATE KEY" "${TMP_KEY}"; then
+    echo "ERROR: Bitwarden note '${BW_ITEM}' does not contain a private key" >&2
     exit 1
 fi
-echo "Fetching SSH bootstrap key..."
-bw get attachment "${ATTACHMENT_NAME}" \
-    --itemid "${ITEM_ID}" \
-    --output "${TMP_KEY}" \
-    --session "${BW_SESSION}" >/dev/null
 chmod 600 "${TMP_KEY}"
 
 # --- 5. Open the SSH tunnel to the WGD LXC ---
