@@ -1,0 +1,12 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+set -euo pipefail
+
+# Final bootstrap step: lock Bitwarden and remove the cached session file
+# used to avoid re-prompting for the master password across scripts.
+BW_SESSION_FILE="/tmp/chezmoi-bw-session-${UID}"
+
+bw lock &>/dev/null || true
+rm -f "${BW_SESSION_FILE}"
+
+{{ end -}}

@@ -4,7 +4,6 @@
 set -euo pipefail
 
 cleanup() {
-    bw lock &>/dev/null || true
     unset BW_SESSION GH_TOKEN 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -30,13 +29,7 @@ fi
 PUB_KEY_BODY=$(awk '{print $1, $2}' "${KEY_PATH}.pub")
 
 # --- 2. Get GitHub token from Bitwarden ---
-echo "Unlocking Bitwarden..."
-if ! bw login --check &>/dev/null; then
-    BW_SESSION=$(bw login --raw)
-else
-    BW_SESSION=$(bw unlock --raw)
-fi
-export BW_SESSION
+{{ template "bw-unlock" . }}
 
 GH_TOKEN=$(bw list items --search "github-pat" --session "${BW_SESSION}" | jq -r '.[0].login.password')
 if [ -z "${GH_TOKEN}" ] || [ "${GH_TOKEN}" = "null" ]; then

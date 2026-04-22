@@ -1,0 +1,24 @@
+# Shared Bitwarden unlock helper — included via {{`{{ template "bw-unlock" . }}`}}.
+# Caches BW_SESSION to a tmpfile so the user enters the master password once
+# across the whole bootstrap. File is 600-perm under /tmp (cleared at reboot).
+BW_SESSION_FILE="/tmp/chezmoi-bw-session-${UID}"
+
+_load_cached_bw_session() {
+    [ -r "${BW_SESSION_FILE}" ] || return 1
+    BW_SESSION=$(cat "${BW_SESSION_FILE}")
+    [ -n "${BW_SESSION}" ] || return 1
+    bw status --session "${BW_SESSION}" 2>/dev/null | grep -q '"status":"unlocked"' || return 1
+    export BW_SESSION
+    return 0
+}
+
+if ! _load_cached_bw_session; then
+    echo "Unlocking Bitwarden..."
+    if ! bw login --check &>/dev/null; then
+        BW_SESSION=$(bw login --raw)
+    else
+        BW_SESSION=$(bw unlock --raw)
+    fi
+    (umask 077 && printf '%s' "${BW_SESSION}" > "${BW_SESSION_FILE}")
+    export BW_SESSION
+fi
