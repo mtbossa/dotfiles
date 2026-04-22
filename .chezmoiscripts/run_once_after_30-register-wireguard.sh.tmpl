@@ -56,11 +56,20 @@ fi
 echo "Fetching SSH bootstrap key..."
 umask 077
 bw get notes "${BW_ITEM}" --session "${BW_SESSION}" > "${TMP_KEY}"
-if ! grep -q "BEGIN .*PRIVATE KEY" "${TMP_KEY}"; then
-    echo "ERROR: Bitwarden note '${BW_ITEM}' does not contain a private key" >&2
-    exit 1
+
+# Bitwarden commonly strips the trailing newline; OpenSSH then refuses to
+# load the key with "error in libcrypto" and falls through to password auth.
+if [ -n "$(tail -c 1 "${TMP_KEY}")" ]; then
+    printf '\n' >> "${TMP_KEY}"
 fi
 chmod 600 "${TMP_KEY}"
+
+# Fail loudly if the note doesn't contain a parseable private key, instead
+# of letting ssh fall through to password prompting.
+if ! ssh-keygen -y -f "${TMP_KEY}" >/dev/null 2>&1; then
+    echo "ERROR: Bitwarden note '${BW_ITEM}' does not contain a parseable SSH private key" >&2
+    exit 1
+fi
 
 # --- 5. Open the SSH tunnel to the WGD LXC ---
 echo "Opening SSH tunnel to ${SSH_USER}@${SSH_HOST}:${SSH_PORT}..."
