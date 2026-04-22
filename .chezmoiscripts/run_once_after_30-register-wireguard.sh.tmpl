@@ -130,16 +130,16 @@ if [ -z "${FINAL_CONFIG}" ]; then
     exit 1
 fi
 
-# --- 8. Write config and bring the interface up ---
+# --- 8. Write config (do not auto-connect) ---
 echo "Writing ${WG_CONF}..."
 sudo install -m 600 -o root -g root /dev/null "${WG_CONF}"
 printf '%s\n' "${FINAL_CONFIG}" | sudo tee "${WG_CONF}" >/dev/null
 
-echo "Enabling wg-quick@${WG_IFACE}..."
-sudo systemctl enable --now "wg-quick@${WG_IFACE}"
-
 echo ""
-echo "WireGuard peer '${PEER_NAME}' registered and interface up."
-sudo wg show "${WG_IFACE}"
+echo "WireGuard peer '${PEER_NAME}' registered."
+echo "Config written to ${WG_CONF}. Bring the interface up with:"
+echo "    sudo wg-quick up ${WG_IFACE}"
+echo "Or enable on boot with:"
+echo "    sudo systemctl enable --now wg-quick@${WG_IFACE}"
 
 {{ end -}}
