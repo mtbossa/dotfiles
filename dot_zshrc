@@ -122,5 +122,8 @@ export PATH="$HOME/.atuin/bin:$PATH"
 . "$HOME/.atuin/bin/env"
 [[ -x "$HOME/.atuin/bin/atuin" ]] && eval "$(atuin init zsh)"
 
+# Check https://github.com/venables/dotfiles/commit/fe7ee2b1b094a999f1011b843795deb4ca53ebd8
+[[ $- == *i* ]] || return
+
 eval "$(starship init zsh)"
 [[ -x "$HOME/.local/bin/zoxide" ]] && eval "$(zoxide init zsh --cmd cd)"
