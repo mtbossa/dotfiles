@@ -11,7 +11,7 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply mtbossa
 You will be prompted for:
 1. Your full name, email, and GitHub username (stored in chezmoi config, never committed)
 2. Optional installs: Slack, Discord, JetBrains Toolbox
-3. Whether to register this machine as a **WireGuard peer** (and if yes, the Bitwarden item name that holds the bootstrap secrets — see [WireGuard auto-registration](#wireguard-auto-registration))
+3. Whether to join this machine to your **Tailscale tailnet** (see [Tailscale auto-join](#tailscale-auto-join) below)
 4. Your **Bitwarden master password** (when the SSH setup script runs)
 5. Your **sudo password** (when Ansible installs system packages)
 
@@ -66,13 +66,13 @@ Runs the Ansible playbook once. Installs:
 - **Dev tools**: git, curl, vim, gcc, htop, mise, Docker
 - **Apps**: Brave Browser, Postman (snap)
 - **Optional** (prompted at init time): Slack, Discord, JetBrains Toolbox
-- **Conditional** (if `registerWireguard=true`): wireguard, wireguard-tools, jq, openssh-client
+- **Conditional** (if `joinTailscale=true`): tailscale (via the official install script)
 
-### Phase 5 — WireGuard registration (`run_once_after_30-register-wireguard`)
+### Phase 5 — Tailscale join (`run_once_after_30-join-tailscale`)
 
-Only runs if you answered "yes" to registering this machine as a WireGuard peer at init time. Skips silently otherwise.
+Only runs if you answered "yes" to joining the Tailscale tailnet at init time. Skips silently otherwise.
 
-See [WireGuard auto-registration](#wireguard-auto-registration) below for the full picture.
+See [Tailscale auto-join](#tailscale-auto-join) below for the full picture.
 
 ---
 
@@ -111,7 +111,8 @@ Before bootstrapping a new machine, ensure your Bitwarden vault has:
 | `atuin-account` | password | Your atuin account password |
 | `atuin-key` | password | Your atuin encryption key (shown on `atuin key`) |
 | `atuin-server` | uri | Your atuin sync server URL (e.g. `http://10.x.x.x:8888`) |
-| `wg-bootstrap` | (see below) | Only needed if you'll register this machine with WireGuard |
+| `tailscale-oauth-client` | username | Tailscale OAuth client ID (see [Tailscale auto-join](#tailscale-auto-join)) |
+| `tailscale-oauth-client` | password | Tailscale OAuth client secret |
 
 Required PAT permissions (fine-grained token, resource owner = your account):
 
@@ -124,92 +125,48 @@ The token is retrieved at runtime via `bw get password github-pat`, exported as 
 
 ---
 
-## WireGuard auto-registration
+## Tailscale auto-join
 
-Optional flow where a fresh OS registers itself as a peer on your WG Dashboard (WGD) instance during bootstrap. WGD stays bound to `127.0.0.1` on its LXC — it is **not** exposed to the public internet. The new machine reaches the WGD API through a tightly-scoped SSH tunnel.
+Optional flow where a fresh machine joins your Tailscale tailnet during bootstrap. Tailscale's own coordination servers handle NAT traversal and peer registration, so unlike the old WireGuard setup there is no self-hosted control-plane host and no SSH tunnel to manage.
 
-### How it works
+Auth keys are minted on demand via a Tailscale **OAuth client** rather than stored as a static secret — static auth keys cap out at 90 days, which means manual rotation forever. An OAuth client secret doesn't expire on its own (valid until revoked), so this is the actual set-and-forget fix.
 
-```
-new machine                    home router               WGD LXC
-───────────                    ───────────               ───────
-chezmoi apply                                            (WGD listens on
-  │                                                       127.0.0.1:10086)
-  ▼                                                         ▲
-generate WG keypair                                         │
-  │                                                         │
-  ▼                                                         │
-open SSH tunnel  ──► wg-ssh.domain:2225 ──► NAT ──► LXC:22 ─┘
-  │                                                         │
-  │    -L 10086:127.0.0.1:10086  (only forward allowed)     │
-  │                                                         │
-  ▼                                                         │
-POST /api/addPeers/<iface>  (through tunnel) ────────────── ┘
-  │
-  ▼
-GET /api/downloadPeer/<iface>?id=<pubkey>
-  │
-  ▼
-/etc/wireguard/wg0.conf + systemctl enable --now wg-quick@wg0
-```
+### How it works (`run_once_after_30-join-tailscale`)
 
-Two secrets are required and they are **independent**:
-- An SSH key that can open the tunnel (and literally nothing else — restricted via `authorized_keys` `restrict,port-forwarding,permitopen=...,command=sleep-infinity`).
-- A WGD API key that authenticates the `addPeers` call.
+1. Skips silently unless `joinTailscale=true` at init time.
+2. Checks `tailscale status --json`:
+   - Already `Running` with the current hostname → no-op, nothing else happens (so re-runs are cheap and don't even need Bitwarden or network calls).
+   - Already `Running` but the hostname changed (machine renamed) → `sudo tailscale set --hostname=<hostname>`, done.
+   - Otherwise → unlocks Bitwarden, fetches the OAuth client ID/secret from the `tailscale-oauth-client` item, exchanges them for a short-lived access token (`POST /api/v2/oauth/token`), mints a fresh single-use, pre-authorized auth key tagged `tag:bootstrap` (`POST /api/v2/tailnet/-/keys`), and runs `sudo tailscale up --authkey=file:<tmp> --hostname=<hostname>` (the key is passed via `file:` so it never appears in `ps` or shell history).
+3. `trap cleanup EXIT`: shreds the temp file holding the minted key and unsets `BW_SESSION`/`CLIENT_SECRET`/`ACCESS_TOKEN`.
 
-Neither alone grants peer-creation ability. The SSH key only opens a pipe to WGD's localhost API; the API key is useless without a way to reach the API. Both live in Bitwarden.
+### One-time Tailscale setup
 
-### One-time infrastructure setup
+1. **ACL policy** (admin console → Access Controls) — add a `tagOwners` entry so `tag:bootstrap` exists:
+   ```json
+   "tagOwners": {
+     "tag:bootstrap": ["autogroup:admin"],
+   },
+   ```
+2. **OAuth client** (admin console → Settings → OAuth clients → Generate OAuth client):
+   - Scopes: **Auth Keys** → **Write**
+   - Tags: `tag:bootstrap` (only selectable once step 1 is done)
+   - Copy the generated **Client ID** and **Client Secret** (shown once).
 
-See [`WG_BOOTSTRAP_SETUP.md`](WG_BOOTSTRAP_SETUP.md) for the full, command-by-command guide. In short:
+### Bitwarden `tailscale-oauth-client` item
 
-1. In the WGD LXC: bind WGD to `127.0.0.1`, generate an API key, create a `wg-bootstrap` Unix user, restrict its `authorized_keys` to port-forwarding only.
-2. At your router (pfSense or similar): NAT a public port (e.g. `2225`) → LXC `:22`.
-3. In Cloudflare DNS: `A` record `wg-ssh.yourdomain.com` → your public IP, **DNS-only (grey cloud)**. Cloudflare's free proxy doesn't handle SSH.
-4. In Bitwarden: create the `wg-bootstrap` item (below).
+A single login item.
 
-### Bitwarden `wg-bootstrap` item
+| Field | Value |
+|-------|-------|
+| username | OAuth Client ID |
+| password | OAuth Client Secret |
 
-One secure note that bundles everything the bootstrap script needs.
+### Operational notes
 
-| Field | Type | Value |
-|-------|------|-------|
-| *attachment* | file | The bootstrap SSH private key |
-| `ssh_host` | text | Public hostname reaching the LXC (e.g. `wg-ssh.yourdomain.com`) |
-| `ssh_port` | text | The NATed external port (e.g. `2225`) |
-| `ssh_user` | text | `wg-bootstrap` |
-| `api_key` | hidden | WGD API key generated in the dashboard UI |
-| `wg_interface` | text | WG interface name (e.g. `wg0`) |
-| `endpoint` | text | Public `host:port` clients should dial for WG itself (e.g. `vpn.yourdomain.com:51820`) |
-
-The chezmoi prompt accepts any item name (default `wg-bootstrap`) — only the item's name needs to match what you enter; the custom fields are fixed.
-
-### What the chezmoi script does (`run_once_after_30-register-wireguard`)
-
-1. Skips silently unless `registerWireguard=true` at init time.
-2. Skips if `/etc/wireguard/<iface>.conf` already exists (so re-runs are safe).
-3. Unlocks Bitwarden; pulls all config + secrets out of the `wg-bootstrap` item.
-4. Fetches the SSH private key attachment into a `mktemp` directory (600 perms).
-5. Generates a fresh WireGuard keypair locally — the private key **never leaves this machine**.
-6. Opens a backgrounded SSH tunnel: `ssh -f -N -L 10086:127.0.0.1:10086 -p $ssh_port $ssh_user@$ssh_host`.
-7. `POST /api/addPeers/<iface>` with the new peer's public key + this machine's hostname.
-8. `GET /api/downloadPeer/<iface>?id=<pubkey>` to fetch the rendered client config.
-9. Injects the local private key into the returned config, writes it to `/etc/wireguard/<iface>.conf` (root-owned, 600).
-10. `systemctl enable --now wg-quick@<iface>`.
-11. `trap cleanup EXIT`: kills the tunnel, `shred`s all temp files, `bw lock`.
-
-If the WGD API response shape doesn't match your WGD version, the script dumps the raw JSON to stderr so you can adjust the `PAYLOAD` in `run_once_after_30-register-wireguard.sh.tmpl` — the targeted version is WGD 4.x.
-
-### What's exposed publicly
-
-Only SSH on the chosen NAT port. Hardening on the LXC's `sshd_config`:
-
-```
-PasswordAuthentication no
-PermitRootLogin no
-```
-
-Plus `fail2ban` for brute-force mitigation. WGD itself is never reachable from the internet.
+- Minted keys are single-use, `expirySeconds: 3600`, and consumed immediately — there's nothing to rotate on the key side. If you ever need to revoke access, revoke the OAuth client in the admin console.
+- Bootstrapped devices are tagged `tag:bootstrap`, and `preauthorized: true` means they skip manual device approval even if your tailnet has that enabled.
+- To verify a machine joined correctly: `tailscale status` and `tailscale ip -4`.
 
 ---
 
@@ -226,8 +183,7 @@ dotfiles/
 │   ├── run_onchange_before_10-setup-ssh-github.sh.tmpl
 │   ├── run_once_after_20-run-ansible.sh.tmpl
 │   ├── run_once_after_21-setup-atuin.sh.tmpl
-│   └── run_once_after_30-register-wireguard.sh.tmpl
-├── WG_BOOTSTRAP_SETUP.md           # one-time infra guide for the WGD LXC side
+│   └── run_once_after_30-join-tailscale.sh.tmpl
 ├── dot_gitconfig.tmpl              # ~/.gitconfig (SSH signing configured)
 ├── dot_zshrc                       # ~/.zshrc
 ├── dot_bashrc                      # ~/.bashrc

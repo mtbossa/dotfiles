@@ -20,6 +20,3 @@ alias dcud="docker compose up -d"
 alias claude-personal="CLAUDE_CONFIG_DIR=~/.claude-personal claude"
 alias claude-bsc="CLAUDE_CONFIG_DIR=~/.claude-bsc claude"
 alias claude-packiyo="CLAUDE_CONFIG_DIR=~/.claude-packiyo claude"
-
-alias bup="sudo wg-quick up bhouse"
-alias bdown="sudo wg-quick down bhouse"

@@ -1,0 +1,171 @@
+#!/bin/bash
+# join-tailscale -- join this machine to the Tailscale tailnet.
+#
+# Usage:
+#   join-tailscale [--peer-name NAME]
+#
+# When called without arguments, PEER_NAME defaults to the system hostname.
+# Uses a Tailscale OAuth client (fetched from the Bitwarden item
+# "tailscale-oauth-client": client ID in the username field, client secret
+# in the password field) to mint a fresh, single-use, pre-authorized auth
+# key on every run via the Tailscale API, then consumes it immediately.
+# This avoids ever storing a long-lived auth key (those cap out at 90 days).
+#
+# The minted key carries DEVICE_TAG below, which must already exist in the
+# tailnet's ACL policy `tagOwners`, and the OAuth client must be scoped to
+# that tag with "Auth Keys" write access.
+#
+# Can be run standalone (outside chezmoi) as long as `tailscale`, `bw`,
+# `curl` and `jq` are available.
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Args
+# ---------------------------------------------------------------------------
+PEER_NAME="$(hostname)"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --peer-name)
+            PEER_NAME="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            echo "Usage: join-tailscale [--peer-name NAME]" >&2
+            exit 1
+            ;;
+    esac
+done
+
+BW_ITEM="tailscale-oauth-client"
+DEVICE_TAG="tag:bootstrap"
+TMP_DIR=$(mktemp -d -t tailscale-join.XXXXXX)
+
+# ---------------------------------------------------------------------------
+# Cleanup
+# ---------------------------------------------------------------------------
+cleanup() {
+    if [ -d "${TMP_DIR}" ]; then
+        find "${TMP_DIR}" -type f -exec shred -u {} \; 2>/dev/null || true
+        rm -rf "${TMP_DIR}"
+    fi
+    unset BW_SESSION CLIENT_SECRET ACCESS_TOKEN 2>/dev/null || true
+}
+trap cleanup EXIT
+
+if ! command -v tailscale >/dev/null 2>&1; then
+    echo "ERROR: tailscale is not installed" >&2
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# 1. Check current tailnet state
+# ---------------------------------------------------------------------------
+STATUS_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
+BACKEND_STATE=$(jq -r '.BackendState // "NoState"' <<<"${STATUS_JSON}")
+
+if [ "${BACKEND_STATE}" = "Running" ]; then
+    CURRENT_HOSTNAME=$(jq -r '.Self.HostName // ""' <<<"${STATUS_JSON}")
+    if [ "${CURRENT_HOSTNAME}" = "${PEER_NAME}" ]; then
+        echo "Already joined to tailnet as '${PEER_NAME}'; skipping."
+        exit 0
+    fi
+    echo "Already joined; updating advertised hostname to '${PEER_NAME}'..."
+    sudo tailscale set --hostname="${PEER_NAME}"
+    exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# 2. Unlock Bitwarden (same logic as bw-unlock chezmoi template)
+# ---------------------------------------------------------------------------
+BW_SESSION_FILE="/tmp/chezmoi-bw-session-${UID}"
+
+_load_cached_bw_session() {
+    [ -r "${BW_SESSION_FILE}" ] || return 1
+    BW_SESSION=$(cat "${BW_SESSION_FILE}")
+    [ -n "${BW_SESSION}" ] || return 1
+    bw status --session "${BW_SESSION}" 2>/dev/null | grep -q '"status":"unlocked"' || return 1
+    export BW_SESSION
+    return 0
+}
+
+if ! _load_cached_bw_session; then
+    echo "Unlocking Bitwarden..."
+    if ! bw login --check &>/dev/null; then
+        BW_SESSION=$(bw login --raw)
+    else
+        BW_SESSION=$(bw unlock --raw)
+    fi
+    (umask 077 && printf '%s' "${BW_SESSION}" > "${BW_SESSION_FILE}")
+    export BW_SESSION
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Fetch the OAuth client credentials
+# ---------------------------------------------------------------------------
+echo "Fetching Tailscale OAuth client from Bitwarden..."
+ITEM_JSON=$(bw list items --search "${BW_ITEM}" --session "${BW_SESSION}")
+CLIENT_ID=$(jq -r '.[0].login.username' <<<"${ITEM_JSON}")
+CLIENT_SECRET=$(jq -r '.[0].login.password' <<<"${ITEM_JSON}")
+
+if [ -z "${CLIENT_ID}" ] || [ "${CLIENT_ID}" = "null" ] \
+|| [ -z "${CLIENT_SECRET}" ] || [ "${CLIENT_SECRET}" = "null" ]; then
+    echo "ERROR: Could not retrieve OAuth client id/secret from Bitwarden item '${BW_ITEM}'" >&2
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# 4. Exchange client credentials for a short-lived access token
+# ---------------------------------------------------------------------------
+echo "Requesting access token..."
+ACCESS_TOKEN=$(curl -sS -X POST "https://api.tailscale.com/api/v2/oauth/token" \
+    --data-urlencode "client_id=${CLIENT_ID}" \
+    --data-urlencode "client_secret=${CLIENT_SECRET}" \
+    | jq -r '.access_token // empty')
+
+if [ -z "${ACCESS_TOKEN}" ]; then
+    echo "ERROR: Could not obtain an OAuth access token from Tailscale" >&2
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# 5. Mint a fresh single-use auth key
+# ---------------------------------------------------------------------------
+echo "Minting a single-use auth key tagged '${DEVICE_TAG}'..."
+KEY_RESPONSE=$(curl -sS -X POST "https://api.tailscale.com/api/v2/tailnet/-/keys" \
+    -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --arg tag "${DEVICE_TAG}" '{
+        capabilities: {
+            devices: {
+                create: {
+                    reusable: false,
+                    ephemeral: false,
+                    preauthorized: true,
+                    tags: [$tag]
+                }
+            }
+        },
+        expirySeconds: 3600
+    }')")
+
+AUTH_KEY=$(jq -r '.key // empty' <<<"${KEY_RESPONSE}")
+if [ -z "${AUTH_KEY}" ]; then
+    echo "ERROR: Could not mint a Tailscale auth key:" >&2
+    jq . <<<"${KEY_RESPONSE}" >&2 || echo "${KEY_RESPONSE}" >&2
+    exit 1
+fi
+
+TMP_KEY="${TMP_DIR}/authkey"
+(umask 077 && printf '%s' "${AUTH_KEY}" > "${TMP_KEY}")
+
+# ---------------------------------------------------------------------------
+# 6. Join the tailnet
+# ---------------------------------------------------------------------------
+echo "Joining tailnet as '${PEER_NAME}'..."
+sudo tailscale up --authkey="file:${TMP_KEY}" --hostname="${PEER_NAME}"
+
+echo ""
+echo "Joined tailnet. Tailscale IPv4: $(tailscale ip -4 2>/dev/null || echo 'pending')"
