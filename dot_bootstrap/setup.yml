@@ -414,7 +414,7 @@
       register: claude_stat
 
     - name: Install Claude CLI
-      ansible.builtin.shell: "curl -fsSL https://claude.ai/install.sh | bash"
+      ansible.builtin.shell: "timeout 300 bash -c 'curl -fsSL https://claude.ai/install.sh | bash'"
       args:
         executable: /bin/bash
       become_user: "{{ remote_regular_user }}"
@@ -424,7 +424,7 @@
 
     - name: Warn if Claude CLI install failed
       ansible.builtin.debug:
-        msg: "Claude CLI install failed (rc={{ claude_install.rc }}). Skipping. Common causes: CPU without AVX, low RAM. Install manually later."
+        msg: "Claude CLI install failed (rc={{ claude_install.rc }}). Skipping. Common causes: CPU without AVX, low RAM, or the install timed out after 5 minutes. Install manually later."
       when: claude_install.rc is defined and claude_install.rc != 0
 
     # Oh My Zsh Custom Plugins
