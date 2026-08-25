@@ -1,8 +1,0 @@
-{{ if and (eq .chezmoi.os "linux") .joinTailscale -}}
-#!/bin/bash
-# chezmoi re-runs this if the hostname changes (peer name is baked in the hash comment below)
-# config hash: {{ .chezmoi.hostname }}
-set -euo pipefail
-
-exec ~/.local/bin/join-tailscale --peer-name "{{ .chezmoi.hostname }}"
-{{ end -}}

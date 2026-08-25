@@ -11,7 +11,7 @@
     install_discord: false
     install_jetbrains_toolbox: false
     install_claude_code: false
-    join_tailscale: false
+    install_tailscale: false
     nerd_fonts_version: "v3.2.1"
     nerd_fonts:
       - name: JetBrainsMono
@@ -133,19 +133,19 @@
           ansible.builtin.debug:
             msg: "VS Code installation failed. Skipping and continuing with the rest of the setup."
 
-    # Tailscale (needed by the chezmoi join-tailscale script)
+    # Tailscale (log in manually afterward with `sudo tailscale up`)
     - name: Check if Tailscale is already installed
       ansible.builtin.command: which tailscale
       register: tailscale_installed
       changed_when: false
       failed_when: false
-      when: join_tailscale | bool
+      when: install_tailscale | bool
 
     - name: Install Tailscale
       ansible.builtin.shell: "curl -fsSL https://tailscale.com/install.sh | sh"
       args:
         executable: /bin/bash
-      when: join_tailscale | bool and tailscale_installed.rc != 0
+      when: install_tailscale | bool and tailscale_installed.rc != 0
 
     # Slack Installation
     - name: Install Slack

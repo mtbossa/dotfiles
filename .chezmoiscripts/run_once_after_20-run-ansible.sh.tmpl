@@ -5,7 +5,7 @@ set -euo pipefail
 ansible-galaxy collection install -r ~/.bootstrap/requirements.yml
 ansible-galaxy role install -r ~/.bootstrap/requirements.yml
 ansible-playbook ~/.bootstrap/setup.yml --ask-become-pass \
-  --extra-vars "install_slack={{ .installSlack }} install_discord={{ .installDiscord }} install_jetbrains_toolbox={{ .installJetbrainsToolbox }} install_claude_code={{ .installClaudeCode }} join_tailscale={{ .joinTailscale }}"
+  --extra-vars "install_slack={{ .installSlack }} install_discord={{ .installDiscord }} install_jetbrains_toolbox={{ .installJetbrainsToolbox }} install_claude_code={{ .installClaudeCode }} install_tailscale={{ .installTailscale }}"
 
 echo "Ansible setup complete."
 

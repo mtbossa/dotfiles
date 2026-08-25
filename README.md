@@ -11,9 +11,8 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply mtbossa
 You will be prompted for:
 1. Your full name, email, and GitHub username (stored in chezmoi config, never committed)
 2. Optional installs: Slack, Discord, JetBrains Toolbox, Claude Code CLI
-3. Whether to join this machine to your **Tailscale tailnet** (see [Tailscale auto-join](#tailscale-auto-join) below)
-4. Your **Bitwarden master password** (when the SSH setup script runs)
-5. Your **sudo password** (when Ansible installs system packages)
+3. Your **Bitwarden master password** (when the SSH setup script runs)
+4. Your **sudo password** (when Ansible installs system packages)
 
 ---
 
@@ -66,13 +65,6 @@ Runs the Ansible playbook once. Installs:
 - **Dev tools**: git, curl, vim, gcc, htop, mise, Docker
 - **Apps**: Brave Browser, Postman (snap)
 - **Optional** (prompted at init time): Slack, Discord, JetBrains Toolbox, Claude Code CLI (skips gracefully if the install fails or times out — see task warning)
-- **Conditional** (if `joinTailscale=true`): tailscale (via the official install script)
-
-### Phase 5 — Tailscale join (`run_once_after_30-join-tailscale`)
-
-Only runs if you answered "yes" to joining the Tailscale tailnet at init time. Skips silently otherwise.
-
-See [Tailscale auto-join](#tailscale-auto-join) below for the full picture.
 
 ---
 
@@ -111,8 +103,6 @@ Before bootstrapping a new machine, ensure your Bitwarden vault has:
 | `atuin-account` | password | Your atuin account password |
 | `atuin-key` | password | Your atuin encryption key (shown on `atuin key`) |
 | `atuin-server` | uri | Your atuin sync server URL (e.g. `http://10.x.x.x:8888`) |
-| `tailscale-oauth-client` | username | Tailscale OAuth client ID (see [Tailscale auto-join](#tailscale-auto-join)) |
-| `tailscale-oauth-client` | password | Tailscale OAuth client secret |
 
 Required PAT permissions (fine-grained token, resource owner = your account):
 
@@ -122,51 +112,6 @@ Required PAT permissions (fine-grained token, resource owner = your account):
 | SSH signing keys | Read and write |
 
 The token is retrieved at runtime via `bw get password github-pat`, exported as `GH_TOKEN`, and never written to disk.
-
----
-
-## Tailscale auto-join
-
-Optional flow where a fresh machine joins your Tailscale tailnet during bootstrap. Tailscale's own coordination servers handle NAT traversal and peer registration, so unlike the old WireGuard setup there is no self-hosted control-plane host and no SSH tunnel to manage.
-
-Auth keys are minted on demand via a Tailscale **OAuth client** rather than stored as a static secret — static auth keys cap out at 90 days, which means manual rotation forever. An OAuth client secret doesn't expire on its own (valid until revoked), so this is the actual set-and-forget fix.
-
-### How it works (`run_once_after_30-join-tailscale`)
-
-1. Skips silently unless `joinTailscale=true` at init time.
-2. Checks `tailscale status --json`:
-   - Already `Running` with the current hostname → no-op, nothing else happens (so re-runs are cheap and don't even need Bitwarden or network calls).
-   - Already `Running` but the hostname changed (machine renamed) → `sudo tailscale set --hostname=<hostname>`, done.
-   - Otherwise → unlocks Bitwarden, fetches the OAuth client ID/secret from the `tailscale-oauth-client` item, exchanges them for a short-lived access token (`POST /api/v2/oauth/token`), mints a fresh single-use, pre-authorized auth key tagged `tag:bootstrap` (`POST /api/v2/tailnet/-/keys`), and runs `sudo tailscale up --authkey=file:<tmp> --hostname=<hostname>` (the key is passed via `file:` so it never appears in `ps` or shell history).
-3. `trap cleanup EXIT`: shreds the temp file holding the minted key and unsets `BW_SESSION`/`CLIENT_SECRET`/`ACCESS_TOKEN`.
-
-### One-time Tailscale setup
-
-1. **ACL policy** (admin console → Access Controls) — add a `tagOwners` entry so `tag:bootstrap` exists:
-   ```json
-   "tagOwners": {
-     "tag:bootstrap": ["autogroup:admin"],
-   },
-   ```
-2. **OAuth client** (admin console → Settings → OAuth clients → Generate OAuth client):
-   - Scopes: **Auth Keys** → **Write**
-   - Tags: `tag:bootstrap` (only selectable once step 1 is done)
-   - Copy the generated **Client ID** and **Client Secret** (shown once).
-
-### Bitwarden `tailscale-oauth-client` item
-
-A single login item.
-
-| Field | Value |
-|-------|-------|
-| username | OAuth Client ID |
-| password | OAuth Client Secret |
-
-### Operational notes
-
-- Minted keys are single-use, `expirySeconds: 3600`, and consumed immediately — there's nothing to rotate on the key side. If you ever need to revoke access, revoke the OAuth client in the admin console.
-- Bootstrapped devices are tagged `tag:bootstrap`, and `preauthorized: true` means they skip manual device approval even if your tailnet has that enabled.
-- To verify a machine joined correctly: `tailscale status` and `tailscale ip -4`.
 
 ---
 
@@ -182,8 +127,7 @@ dotfiles/
 │   ├── run_onchange_before_03-install-ansible.sh.tmpl
 │   ├── run_onchange_before_10-setup-ssh-github.sh.tmpl
 │   ├── run_once_after_20-run-ansible.sh.tmpl
-│   ├── run_once_after_21-setup-atuin.sh.tmpl
-│   └── run_once_after_30-join-tailscale.sh.tmpl
+│   └── run_once_after_21-setup-atuin.sh.tmpl
 ├── dot_gitconfig.tmpl              # ~/.gitconfig (SSH signing configured)
 ├── dot_zshrc                       # ~/.zshrc
 ├── dot_bashrc                      # ~/.bashrc
