@@ -4,6 +4,7 @@
 {{- $installSlack := promptBoolOnce . "installSlack" "Install Slack" -}}
 {{- $installDiscord := promptBoolOnce . "installDiscord" "Install Discord" -}}
 {{- $installJetbrainsToolbox := promptBoolOnce . "installJetbrainsToolbox" "Install JetBrains Toolbox" -}}
+{{- $installClaudeCode := promptBoolOnce . "installClaudeCode" "Install Claude Code CLI" -}}
 {{- $joinTailscale := promptBoolOnce . "joinTailscale" "Join this machine to your Tailscale tailnet" -}}
 
 [data]
@@ -13,6 +14,7 @@
     installSlack = {{ $installSlack }}
     installDiscord = {{ $installDiscord }}
     installJetbrainsToolbox = {{ $installJetbrainsToolbox }}
+    installClaudeCode = {{ $installClaudeCode }}
     joinTailscale = {{ $joinTailscale }}
 
 [edit]

@@ -10,6 +10,7 @@
     install_slack: false
     install_discord: false
     install_jetbrains_toolbox: false
+    install_claude_code: false
     join_tailscale: false
     nerd_fonts_version: "v3.2.1"
     nerd_fonts:
@@ -408,24 +409,27 @@
       when: not zoxide_stat.stat.exists
 
     # Claude CLI Installation
-    - name: Check if Claude CLI is installed
-      ansible.builtin.stat:
-        path: "/home/{{ remote_regular_user }}/.claude/local/claude"
-      register: claude_stat
-
     - name: Install Claude CLI
-      ansible.builtin.shell: "timeout 300 bash -c 'curl -fsSL https://claude.ai/install.sh | bash'"
-      args:
-        executable: /bin/bash
-      become_user: "{{ remote_regular_user }}"
-      when: not claude_stat.stat.exists
-      register: claude_install
-      failed_when: false
+      when: install_claude_code | bool
+      block:
+        - name: Check if Claude CLI is installed
+          ansible.builtin.stat:
+            path: "/home/{{ remote_regular_user }}/.claude/local/claude"
+          register: claude_stat
 
-    - name: Warn if Claude CLI install failed
-      ansible.builtin.debug:
-        msg: "Claude CLI install failed (rc={{ claude_install.rc }}). Skipping. Common causes: CPU without AVX, low RAM, or the install timed out after 5 minutes. Install manually later."
-      when: claude_install.rc is defined and claude_install.rc != 0
+        - name: Install Claude CLI binary
+          ansible.builtin.shell: "timeout 300 bash -c 'curl -fsSL https://claude.ai/install.sh | bash'"
+          args:
+            executable: /bin/bash
+          become_user: "{{ remote_regular_user }}"
+          when: not claude_stat.stat.exists
+          register: claude_install
+          failed_when: false
+
+        - name: Warn if Claude CLI install failed
+          ansible.builtin.debug:
+            msg: "Claude CLI install failed (rc={{ claude_install.rc }}). Skipping. Common causes: CPU without AVX, low RAM, or the install timed out after 5 minutes. Install manually later."
+          when: claude_install.rc is defined and claude_install.rc != 0
 
     # Oh My Zsh Custom Plugins
     - name: Ensure oh-my-zsh-customization/plugins directory exists
