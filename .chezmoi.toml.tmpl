@@ -4,7 +4,8 @@
 {{- $installSlack := promptBoolOnce . "installSlack" "Install Slack" -}}
 {{- $installDiscord := promptBoolOnce . "installDiscord" "Install Discord" -}}
 {{- $installJetbrainsToolbox := promptBoolOnce . "installJetbrainsToolbox" "Install JetBrains Toolbox" -}}
-{{- $registerWireguard := promptBoolOnce . "registerWireguard" "Register this machine as a WireGuard peer" -}}
+{{- $installClaudeCode := promptBoolOnce . "installClaudeCode" "Install Claude Code CLI" -}}
+{{- $installTailscale := promptBoolOnce . "installTailscale" "Install Tailscale" -}}
 
 [data]
     name = {{ $name | quote }}
@@ -13,7 +14,8 @@
     installSlack = {{ $installSlack }}
     installDiscord = {{ $installDiscord }}
     installJetbrainsToolbox = {{ $installJetbrainsToolbox }}
-    registerWireguard = {{ $registerWireguard }}
+    installClaudeCode = {{ $installClaudeCode }}
+    installTailscale = {{ $installTailscale }}
 
 [edit]
     command = "code"
