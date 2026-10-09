@@ -10,7 +10,8 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply mtbossa
 
 You will be prompted for:
 1. Your full name, email, and GitHub username (stored in chezmoi config, never committed)
-2. Optional installs: Slack, Discord, JetBrains Toolbox, Claude Code CLI
+2. Optional installs: Slack, JetBrains Toolbox, and (not on Omarchy, which ships them) Discord and Claude Code CLI
+   - Whether to add the machine to your tailnet (`tailscale up`; Tailscale is installed first on Debian, already shipped on Omarchy)
 3. Your **Bitwarden master password** (when the SSH setup script runs)
 4. Your **sudo password** (when Ansible installs system packages)
 
@@ -65,6 +66,7 @@ Runs the Ansible playbook once. Installs:
 - **Dev tools**: git, curl, vim, gcc, htop, mise, Docker
 - **Apps**: Brave Browser, Postman (snap)
 - **Optional** (prompted at init time): Slack, Discord, JetBrains Toolbox, Claude Code CLI (skips gracefully if the install fails or times out — see task warning)
+- **Tailnet** (prompted): `run_once_after_22-join-tailnet` enables `tailscaled` and runs `tailscale up`; authorize the machine from the login URL it prints
 
 ---
 
@@ -85,7 +87,7 @@ On the `arch` family:
 
 - The Debian/Fedora installers and the Ansible playbook are skipped.
 - `run_onchange_before_05-install-packages-arch` installs the package lists in `.chezmoidata/packages.yaml`
-  (pacman for repo packages, `yay` for AUR; the optional-install prompts pick extra groups). Editing the list re-runs it.
+  (pacman for repo packages, `yay` for AUR; Slack and JetBrains Toolbox are optional groups). Tailscale, Discord and Claude Code come with Omarchy, so they aren't installed or asked about. Editing the list re-runs it.
 - Omarchy owns the shell, terminal and prompt, so `.zshrc`, alacritty, starship and oh-my-zsh (and its externals) are not deployed. tmux is: config, TPM and catppuccin apply everywhere.
 - `~/.bashrc` is never overwritten: `modify_dot_bashrc` appends one block that sources `~/.config/shell/extras.bash`
   (atuin + personal aliases from `~/.config/shell/aliases.sh`). Omarchy's own bash defaults, fzf, zoxide, mise and starship stay.

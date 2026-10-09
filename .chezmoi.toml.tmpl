@@ -1,11 +1,17 @@
+{{- $family := includeTemplate "osFamily" . -}}
 {{- $name := promptStringOnce . "name" "Full name" -}}
 {{- $email := promptStringOnce . "email" "Email address" -}}
 {{- $githubUser := promptStringOnce . "githubUser" "GitHub username" -}}
 {{- $installSlack := promptBoolOnce . "installSlack" "Install Slack" -}}
-{{- $installDiscord := promptBoolOnce . "installDiscord" "Install Discord" -}}
 {{- $installJetbrainsToolbox := promptBoolOnce . "installJetbrainsToolbox" "Install JetBrains Toolbox" -}}
-{{- $installClaudeCode := promptBoolOnce . "installClaudeCode" "Install Claude Code CLI" -}}
-{{- $installTailscale := promptBoolOnce . "installTailscale" "Install Tailscale" -}}
+{{- $joinTailnet := promptBoolOnce . "joinTailnet" "Add this machine to your tailnet (tailscale up)" -}}
+{{- /* Omarchy/Arch already ships Discord and Claude Code, so only ask elsewhere. */ -}}
+{{- $installDiscord := false -}}
+{{- $installClaudeCode := false -}}
+{{- if ne $family "arch" -}}
+{{-   $installDiscord = promptBoolOnce . "installDiscord" "Install Discord" -}}
+{{-   $installClaudeCode = promptBoolOnce . "installClaudeCode" "Install Claude Code CLI" -}}
+{{- end -}}
 
 [data]
     name = {{ $name | quote }}
@@ -15,7 +21,7 @@
     installDiscord = {{ $installDiscord }}
     installJetbrainsToolbox = {{ $installJetbrainsToolbox }}
     installClaudeCode = {{ $installClaudeCode }}
-    installTailscale = {{ $installTailscale }}
+    joinTailnet = {{ $joinTailnet }}
 
 [edit]
     command = "code"

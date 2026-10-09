@@ -1,4 +1,5 @@
 # Declarative package lists, consumed by .chezmoiscripts/run_onchange_before_05-install-packages-*.
+# Omarchy already ships tailscale, discord and claude, so they are not listed.
 # Editing a list changes the rendered script, so chezmoi re-runs it on the next apply.
 packages:
   arch:
@@ -16,9 +17,5 @@ packages:
     optional:
       installSlack:
         aur: [slack-desktop]
-      installDiscord:
-        pacman: [discord]
       installJetbrainsToolbox:
         aur: [jetbrains-toolbox]
-      installTailscale:
-        pacman: [tailscale]

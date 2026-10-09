@@ -22,13 +22,4 @@ sudo pacman -S --needed --noconfirm {{ $pacman | join " " }}
 
 yay -S --needed --noconfirm {{ $aur | join " " }} \
     || echo "WARNING: some AUR packages failed; install them manually." >&2
-{{ if .installTailscale }}
-sudo systemctl enable --now tailscaled
-{{ end -}}
-{{ if .installClaudeCode }}
-if ! command -v claude &>/dev/null; then
-    timeout 300 bash -c 'curl -fsSL https://claude.ai/install.sh | bash' \
-        || echo "WARNING: Claude Code install failed; install it manually." >&2
-fi
-{{ end -}}
 {{ end -}}

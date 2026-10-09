@@ -1,0 +1,22 @@
+{{ if and (eq .chezmoi.os "linux") .joinTailnet -}}
+#!/bin/bash
+# Adds this machine to the tailnet. Tailscale is installed by Ansible (Debian) or already
+# shipped by Omarchy; this only starts the daemon and logs in.
+set -euo pipefail
+
+if ! command -v tailscale &>/dev/null; then
+    echo "WARNING: tailscale is not installed; skipping tailnet join." >&2
+    exit 0
+fi
+
+sudo systemctl enable --now tailscaled
+
+if [ "$(tailscale status --json 2>/dev/null | jq -r '.BackendState // empty')" = "Running" ]; then
+    echo "Already connected to a tailnet."
+    exit 0
+fi
+
+echo "Joining the tailnet: open the login URL below to authorize this machine."
+sudo tailscale up --timeout=300s \
+    || echo "WARNING: tailnet join did not finish. Run 'sudo tailscale up' later." >&2
+{{ end -}}
