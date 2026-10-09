@@ -3,6 +3,12 @@
 # Arch / Omarchy: install only what Omarchy doesn't already ship.
 set -euo pipefail
 
+# A fresh install can have no synced package databases ("database file for core
+# does not exist"). Do a full upgrade then: syncing without upgrading (-Sy) is unsupported on Arch.
+if ! ls /var/lib/pacman/sync/*.db &>/dev/null; then
+    sudo pacman -Syu --noconfirm
+fi
+
 sudo pacman -S --needed --noconfirm bitwarden-cli github-cli jq atuin{{ if .installTailscale }} tailscale{{ end }}{{ if .installDiscord }} discord{{ end }}
 
 AUR=(brave-bin visual-studio-code-bin zoom{{ if .installSlack }} slack-desktop{{ end }}{{ if .installJetbrainsToolbox }} jetbrains-toolbox{{ end }})
