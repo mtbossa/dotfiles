@@ -5,7 +5,7 @@ set -euo pipefail
 
 # A fresh install can have no synced package databases ("database file for core
 # does not exist"). Do a full upgrade then: syncing without upgrading (-Sy) is unsupported on Arch.
-if ! ls /var/lib/pacman/sync/*.db &>/dev/null; then
+if [ ! -f /var/lib/pacman/sync/core.db ] || [ ! -f /var/lib/pacman/sync/extra.db ]; then
     sudo pacman -Syu --noconfirm
 fi
 
