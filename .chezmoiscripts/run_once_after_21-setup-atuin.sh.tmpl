@@ -2,7 +2,7 @@
 #!/bin/bash
 set -euo pipefail
 
-ATUIN_BIN="${HOME}/.atuin/bin/atuin"
+ATUIN_BIN="$(command -v atuin || echo "${HOME}/.atuin/bin/atuin")"
 
 cleanup() {
     unset BW_SESSION 2>/dev/null || true
@@ -10,7 +10,7 @@ cleanup() {
 trap cleanup EXIT
 
 if [ ! -x "${ATUIN_BIN}" ]; then
-    echo "ERROR: atuin is not installed at ${ATUIN_BIN}" >&2
+    echo "ERROR: atuin not found (checked PATH and ${ATUIN_BIN})" >&2
     exit 1
 fi
 

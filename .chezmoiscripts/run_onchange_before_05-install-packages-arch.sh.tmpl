@@ -1,0 +1,20 @@
+{{ if and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "arch") -}}
+#!/bin/bash
+# Arch / Omarchy: install only what Omarchy doesn't already ship.
+set -euo pipefail
+
+sudo pacman -S --needed --noconfirm bitwarden-cli github-cli jq atuin{{ if .installTailscale }} tailscale{{ end }}{{ if .installDiscord }} discord{{ end }}
+
+AUR=(brave-bin visual-studio-code-bin zoom{{ if .installSlack }} slack-desktop{{ end }}{{ if .installJetbrainsToolbox }} jetbrains-toolbox{{ end }})
+yay -S --needed --noconfirm "${AUR[@]}" || echo "WARNING: some AUR packages failed; install them manually." >&2
+
+{{ if .installTailscale -}}
+sudo systemctl enable --now tailscaled
+{{ end -}}
+{{ if .installClaudeCode -}}
+if ! command -v claude &>/dev/null; then
+    timeout 300 bash -c 'curl -fsSL https://claude.ai/install.sh | bash' \
+        || echo "WARNING: Claude Code install failed; install it manually." >&2
+fi
+{{ end -}}
+{{ end -}}

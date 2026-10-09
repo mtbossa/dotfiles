@@ -1,2 +1,12 @@
 README.md
 reset-bootstrap.sh
+{{ if eq .chezmoi.osRelease.id "arch" }}
+# Omarchy owns the shell, terminal, prompt and Hyprland configs; don't overwrite them.
+.bashrc
+.zshrc
+.tmux.conf
+.bootstrap
+oh-my-zsh-customization
+.config/alacritty
+.config/starship.toml
+{{ end }}
