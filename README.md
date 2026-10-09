@@ -86,7 +86,7 @@ On the `arch` family:
 - The Debian/Fedora installers and the Ansible playbook are skipped.
 - `run_onchange_before_05-install-packages-arch` installs the package lists in `.chezmoidata/packages.yaml`
   (pacman for repo packages, `yay` for AUR; the optional-install prompts pick extra groups). Editing the list re-runs it.
-- Omarchy owns the shell, terminal and prompt, so `.zshrc`, tmux, alacritty, starship, oh-my-zsh and externals are not deployed.
+- Omarchy owns the shell, terminal and prompt, so `.zshrc`, alacritty, starship and oh-my-zsh (and its externals) are not deployed. tmux is: config, TPM and catppuccin apply everywhere.
 - `~/.bashrc` is never overwritten: `modify_dot_bashrc` appends one block that sources `~/.config/shell/extras.bash`
   (atuin + personal aliases from `~/.config/shell/aliases.sh`). Omarchy's own bash defaults, fzf, zoxide, mise and starship stay.
 

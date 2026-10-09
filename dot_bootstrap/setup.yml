@@ -349,11 +349,3 @@
           ansible.builtin.debug:
             msg: "Claude CLI install failed (rc={{ claude_install.rc }}). Skipping. Common causes: CPU without AVX, low RAM, or the install timed out after 5 minutes. Install manually later."
           when: claude_install.rc is defined and claude_install.rc != 0
-
-    # TPM and catppuccin are fetched by chezmoi (.chezmoiexternal.toml.tmpl)
-    - name: Install tmux plugins via TPM
-      ansible.builtin.shell: "/home/{{ remote_regular_user }}/.tmux/plugins/tpm/bin/install_plugins"
-      args:
-        executable: /bin/bash
-      become_user: "{{ remote_regular_user }}"
-      changed_when: false

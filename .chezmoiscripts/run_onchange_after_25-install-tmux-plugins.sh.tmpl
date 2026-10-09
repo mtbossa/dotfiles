@@ -1,0 +1,8 @@
+#!/bin/bash
+# Installs the TPM plugins declared in ~/.tmux.conf. Re-runs when tmux.conf changes.
+# Numbered after the Ansible playbook (20) so tmux exists on Debian-family machines.
+# tmux.conf hash: {{ include "dot_tmux.conf" | sha256sum }}
+set -euo pipefail
+
+command -v tmux &>/dev/null || { echo "tmux not installed; skipping TPM plugins" >&2; exit 0; }
+"${HOME}/.tmux/plugins/tpm/bin/install_plugins"

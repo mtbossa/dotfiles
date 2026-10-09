@@ -1,5 +1,16 @@
 {{- /* Downloaded declaratively by chezmoi (replaces the Ansible clone/download tasks).
-       Skipped on Arch/Omarchy, which ships its own shell stack and fonts. */ -}}
+       The shell/font ones are skipped on Arch/Omarchy, which ships its own stack; tmux plugins are for everyone. */ -}}
+[".tmux/plugins/tpm"]
+    type = "archive"
+    url = "https://github.com/tmux-plugins/tpm/archive/master.tar.gz"
+    stripComponents = 1
+    refreshPeriod = "168h"
+
+[".config/tmux/plugins/catppuccin/tmux"]
+    type = "archive"
+    url = "https://github.com/catppuccin/tmux/archive/refs/tags/{{ .externals.catppuccinTmuxVersion }}.tar.gz"
+    stripComponents = 1
+
 {{ if ne (includeTemplate "osFamily" .) "arch" -}}
 [".oh-my-zsh"]
     type = "archive"
@@ -19,17 +30,6 @@
     type = "file"
     url = "https://raw.githubusercontent.com/eza-community/eza/main/completions/zsh/_eza"
     refreshPeriod = "168h"
-
-[".tmux/plugins/tpm"]
-    type = "archive"
-    url = "https://github.com/tmux-plugins/tpm/archive/master.tar.gz"
-    stripComponents = 1
-    refreshPeriod = "168h"
-
-[".config/tmux/plugins/catppuccin/tmux"]
-    type = "archive"
-    url = "https://github.com/catppuccin/tmux/archive/refs/tags/{{ .externals.catppuccinTmuxVersion }}.tar.gz"
-    stripComponents = 1
 
 {{ range .externals.nerdFonts -}}
 [".local/share/fonts/NerdFonts/{{ .name }}"]

@@ -1,9 +1,8 @@
 README.md
 reset-bootstrap.sh
 {{ if eq (includeTemplate "osFamily" .) "arch" }}
-# Omarchy owns the shell, terminal and prompt setup; don't overwrite it.
+# Omarchy owns the shell, terminal and prompt setup; don't overwrite it (tmux is ours).
 .zshrc
-.tmux.conf
 .bootstrap
 oh-my-zsh-customization
 .config/alacritty
