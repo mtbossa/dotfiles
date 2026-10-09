@@ -1,6 +1,15 @@
-{{ if and (eq .chezmoi.os "linux") (or (eq .chezmoi.osRelease.id "arch") (eq .chezmoi.osRelease.id "omarchy")) -}}
+{{ if eq (includeTemplate "osFamily" .) "arch" -}}
+{{- $pacman := .packages.arch.pacman -}}
+{{- $aur := .packages.arch.aur -}}
+{{- range $flag, $group := .packages.arch.optional -}}
+{{-   if index $ $flag -}}
+{{-     $pacman = concat $pacman (get $group "pacman" | default (list)) -}}
+{{-     $aur = concat $aur (get $group "aur" | default (list)) -}}
+{{-   end -}}
+{{- end -}}
 #!/bin/bash
 # Arch / Omarchy: install only what Omarchy doesn't already ship.
+# Package lists live in .chezmoidata/packages.yaml and are rendered below, so changing them re-runs this script.
 set -euo pipefail
 
 # A fresh install can have no synced package databases ("database file for core
@@ -9,15 +18,14 @@ if ! ls /var/lib/pacman/sync/*.db &>/dev/null; then
     sudo pacman -Syu --noconfirm
 fi
 
-sudo pacman -S --needed --noconfirm bitwarden-cli github-cli jq atuin{{ if .installTailscale }} tailscale{{ end }}{{ if .installDiscord }} discord{{ end }}
+sudo pacman -S --needed --noconfirm {{ $pacman | join " " }}
 
-AUR=(brave-bin visual-studio-code-bin zoom{{ if .installSlack }} slack-desktop{{ end }}{{ if .installJetbrainsToolbox }} jetbrains-toolbox{{ end }})
-yay -S --needed --noconfirm "${AUR[@]}" || echo "WARNING: some AUR packages failed; install them manually." >&2
-
-{{ if .installTailscale -}}
+yay -S --needed --noconfirm {{ $aur | join " " }} \
+    || echo "WARNING: some AUR packages failed; install them manually." >&2
+{{ if .installTailscale }}
 sudo systemctl enable --now tailscaled
 {{ end -}}
-{{ if .installClaudeCode -}}
+{{ if .installClaudeCode }}
 if ! command -v claude &>/dev/null; then
     timeout 300 bash -c 'curl -fsSL https://claude.ai/install.sh | bash' \
         || echo "WARNING: Claude Code install failed; install it manually." >&2

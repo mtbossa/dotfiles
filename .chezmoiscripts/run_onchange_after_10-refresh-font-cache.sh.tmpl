@@ -1,0 +1,9 @@
+{{ if ne (includeTemplate "osFamily" .) "arch" -}}
+#!/bin/bash
+# Re-runs when the Nerd Fonts version/list changes (rendered below).
+# fonts: {{ .externals.nerdFontsVersion }} {{ range .externals.nerdFonts }}{{ .name }} {{ end }}
+set -euo pipefail
+
+command -v fc-cache &>/dev/null || exit 0
+fc-cache -f "${HOME}/.local/share/fonts"
+{{ end -}}

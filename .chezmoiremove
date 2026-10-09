@@ -1,0 +1,3 @@
+# Legacy alacritty configs (alacritty.toml replaced them)
+.config/alacritty/alacritty.yml
+.config/alacritty/themes/iterm.yaml

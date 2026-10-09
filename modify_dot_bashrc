@@ -1,0 +1,7 @@
+#!/bin/bash
+# Keeps whatever ~/.bashrc the distro ships (Omarchy, Ubuntu, ...) and adds one managed block to it.
+current=$(cat)
+if ! grep -qF '# >>> dotfiles >>>' <<<"${current}"; then
+    current+=$'\n\n# >>> dotfiles >>>\n[[ -f ~/.config/shell/extras.bash ]] && source ~/.config/shell/extras.bash\n# <<< dotfiles <<<'
+fi
+printf '%s\n' "${current#$'\n'}"

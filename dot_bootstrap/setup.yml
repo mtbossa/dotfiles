@@ -12,19 +12,8 @@
     install_jetbrains_toolbox: false
     install_claude_code: false
     install_tailscale: false
-    nerd_fonts_version: "v3.2.1"
-    nerd_fonts:
-      - name: JetBrainsMono
-        pattern: "JetBrainsMonoNerd*FontMono*"
-      - name: FiraCode
-        pattern: "*FiraCode*"
     snap_packages:
       - postman
-    zsh_plugins:
-      - name: zsh-autosuggestions
-        repo: https://github.com/zsh-users/zsh-autosuggestions
-      - name: zsh-syntax-highlighting
-        repo: https://github.com/zsh-users/zsh-syntax-highlighting
 
   tasks:
     - name: Remove conflicting VS Code apt source files (if any)
@@ -59,21 +48,6 @@
       ansible.builtin.user:
         name: "{{ remote_regular_user }}"
         shell: /usr/bin/zsh
-
-    # Oh My Zsh Installation
-    - name: Check if Oh My Zsh is already installed
-      ansible.builtin.stat:
-        path: "/home/{{ remote_regular_user }}/.oh-my-zsh"
-      register: ohmyzsh_stat
-
-    - name: Install Oh My Zsh
-      ansible.builtin.shell: >
-        curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh |
-        sh -s -- --unattended --keep-zshrc --skip-chsh
-      args:
-        executable: /bin/bash
-      become_user: "{{ remote_regular_user }}"
-      when: not ohmyzsh_stat.stat.exists
 
     # Starship Installation
     - name: Check if starship is already installed
@@ -243,46 +217,6 @@
       changed_when: snap_result.rc == 0
       failed_when: false
 
-    # Font Installation
-    - name: Ensure fonts directory exists
-      ansible.builtin.file:
-        path: "/home/{{ remote_regular_user }}/.fonts"
-        state: directory
-        mode: "0755"
-        owner: "{{ remote_regular_user }}"
-
-    - name: Check which Nerd Fonts are already installed
-      ansible.builtin.find:
-        paths: "/home/{{ remote_regular_user }}/.fonts"
-        patterns: "{{ item.pattern }}"
-      register: font_find_results
-      loop: "{{ nerd_fonts }}"
-
-    - name: Download missing Nerd Font zips
-      ansible.builtin.get_url:
-        url: "https://github.com/ryanoasis/nerd-fonts/releases/download/{{ nerd_fonts_version }}/{{ item.item.name }}.zip"
-        dest: "/tmp/{{ item.item.name }}.zip"
-        mode: "0644"
-        timeout: 300
-      loop: "{{ font_find_results.results }}"
-      when: item.matched == 0
-
-    - name: Extract missing Nerd Fonts
-      ansible.builtin.unarchive:
-        src: "/tmp/{{ item.item.name }}.zip"
-        dest: "/home/{{ remote_regular_user }}/.fonts/"
-        mode: "0755"
-        owner: "{{ remote_regular_user }}"
-      loop: "{{ font_find_results.results }}"
-      when: item.matched == 0
-      register: fonts_downloaded
-
-    - name: Refresh font cache
-      ansible.builtin.command: fc-cache -f "/home/{{ remote_regular_user }}/.fonts"
-      become_user: "{{ remote_regular_user }}"
-      when: fonts_downloaded.changed
-      changed_when: true
-
     # mise Installation
     - name: Check if mise is installed
       ansible.builtin.stat:
@@ -348,21 +282,6 @@
       ansible.builtin.apt:
         name: eza
         state: present
-
-    - name: Ensure eza completions directory exists
-      ansible.builtin.file:
-        path: "/home/{{ remote_regular_user }}/.local/share/eza"
-        state: directory
-        mode: "0755"
-        owner: "{{ remote_regular_user }}"
-        group: "{{ remote_regular_user }}"
-
-    - name: Clone eza repository for zsh completions
-      ansible.builtin.git:
-        repo: https://github.com/eza-community/eza.git
-        dest: "/home/{{ remote_regular_user }}/.local/share/eza"
-        update: true
-      become_user: "{{ remote_regular_user }}"
 
     # fzf Installation
     - name: Ensure ~/.local/bin directory exists for fzf
@@ -431,47 +350,7 @@
             msg: "Claude CLI install failed (rc={{ claude_install.rc }}). Skipping. Common causes: CPU without AVX, low RAM, or the install timed out after 5 minutes. Install manually later."
           when: claude_install.rc is defined and claude_install.rc != 0
 
-    # Oh My Zsh Custom Plugins
-    - name: Ensure oh-my-zsh-customization/plugins directory exists
-      ansible.builtin.file:
-        path: "/home/{{ remote_regular_user }}/oh-my-zsh-customization/plugins"
-        state: directory
-        mode: "0755"
-        owner: "{{ remote_regular_user }}"
-        group: "{{ remote_regular_user }}"
-
-    - name: Clone Oh My Zsh custom plugins
-      ansible.builtin.git:
-        repo: "{{ item.repo }}"
-        dest: "/home/{{ remote_regular_user }}/oh-my-zsh-customization/plugins/{{ item.name }}"
-        update: true
-      become_user: "{{ remote_regular_user }}"
-      loop: "{{ zsh_plugins }}"
-
-    # TPM & Tmux Plugins
-    - name: Clone TPM (Tmux Plugin Manager)
-      ansible.builtin.git:
-        repo: https://github.com/tmux-plugins/tpm
-        dest: "/home/{{ remote_regular_user }}/.tmux/plugins/tpm"
-        update: true
-      become_user: "{{ remote_regular_user }}"
-
-    - name: Ensure catppuccin tmux plugin directory exists
-      ansible.builtin.file:
-        path: "/home/{{ remote_regular_user }}/.config/tmux/plugins/catppuccin"
-        state: directory
-        mode: "0755"
-        owner: "{{ remote_regular_user }}"
-        group: "{{ remote_regular_user }}"
-
-    - name: Install catppuccin/tmux manually (v2.3.0)
-      ansible.builtin.git:
-        repo: https://github.com/catppuccin/tmux
-        dest: "/home/{{ remote_regular_user }}/.config/tmux/plugins/catppuccin/tmux"
-        version: "v2.3.0"
-        update: true
-      become_user: "{{ remote_regular_user }}"
-
+    # TPM and catppuccin are fetched by chezmoi (.chezmoiexternal.toml.tmpl)
     - name: Install tmux plugins via TPM
       ansible.builtin.shell: "/home/{{ remote_regular_user }}/.tmux/plugins/tpm/bin/install_plugins"
       args:

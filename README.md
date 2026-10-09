@@ -50,7 +50,7 @@ chezmoi deploys all managed dotfiles to `$HOME`:
 |--------|--------|
 | `dot_gitconfig.tmpl` | `~/.gitconfig` |
 | `dot_zshrc` | `~/.zshrc` |
-| `dot_bashrc` | `~/.bashrc` |
+| `modify_dot_bashrc` | `~/.bashrc` (adds one managed block; keeps the distro's own file) |
 | `dot_tmux.conf` | `~/.tmux.conf` |
 | `dot_bootstrap/` | `~/.bootstrap/` |
 | `private_dot_config/` | `~/.config/` |
@@ -60,11 +60,37 @@ chezmoi deploys all managed dotfiles to `$HOME`:
 
 Runs the Ansible playbook once. Installs:
 
-- **Shell**: zsh, Oh My Zsh, Starship, zsh-autosuggestions, zsh-syntax-highlighting, atuin
-- **Terminal**: tmux + TPM + catppuccin theme, alacritty, Nerd Fonts (JetBrainsMono, FiraCode)
+- **Shell**: zsh, Starship, atuin
+- **Terminal**: tmux, alacritty
 - **Dev tools**: git, curl, vim, gcc, htop, mise, Docker
 - **Apps**: Brave Browser, Postman (snap)
 - **Optional** (prompted at init time): Slack, Discord, JetBrains Toolbox, Claude Code CLI (skips gracefully if the install fails or times out — see task warning)
+
+---
+
+### Downloaded by chezmoi, not Ansible (`.chezmoiexternal.toml.tmpl`)
+
+Oh My Zsh, zsh-autosuggestions, zsh-syntax-highlighting, TPM, catppuccin/tmux, the eza zsh completion and the Nerd Fonts
+(JetBrainsMono, FiraCode; versions in `.chezmoidata/externals.yaml`) are chezmoi externals. They are fetched during
+`chezmoi apply`, refreshed weekly, and skipped on Arch/Omarchy. Oh My Zsh's own updater is disabled for that reason.
+
+---
+
+## Omarchy / Arch
+
+chezmoi detects the distro family once, in `.chezmoitemplates/osFamily` (`arch` for Arch, Omarchy and anything with
+`ID_LIKE=arch`; `debian`; `fedora`). Every script, `.chezmoiignore` and `.chezmoiexternal` uses it, so there is one place to extend.
+
+On the `arch` family:
+
+- The Debian/Fedora installers and the Ansible playbook are skipped.
+- `run_onchange_before_05-install-packages-arch` installs the package lists in `.chezmoidata/packages.yaml`
+  (pacman for repo packages, `yay` for AUR; the optional-install prompts pick extra groups). Editing the list re-runs it.
+- Omarchy owns the shell, terminal and prompt, so `.zshrc`, tmux, alacritty, starship, oh-my-zsh and externals are not deployed.
+- `~/.bashrc` is never overwritten: `modify_dot_bashrc` appends one block that sources `~/.config/shell/extras.bash`
+  (atuin + personal aliases from `~/.config/shell/aliases.sh`). Omarchy's own bash defaults, fzf, zoxide, mise and starship stay.
+
+Try it on a fresh Omarchy install: `sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply mtbossa`.
 
 ---
 

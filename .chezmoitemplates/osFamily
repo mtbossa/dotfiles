@@ -1,0 +1,16 @@
+{{- /* Distro family: arch (incl. Omarchy), debian (incl. Ubuntu/Pop!_OS), fedora, other-linux, or the OS name. */ -}}
+{{- if ne .chezmoi.os "linux" -}}
+{{ .chezmoi.os }}
+{{- else -}}
+{{- $id := .chezmoi.osRelease.id -}}
+{{- $like := get .chezmoi.osRelease "idLike" | default "" -}}
+{{- if or (has $id (list "arch" "omarchy")) (contains "arch" $like) -}}
+arch
+{{- else if or (has $id (list "debian" "ubuntu" "pop")) (contains "debian" $like) (contains "ubuntu" $like) -}}
+debian
+{{- else if or (eq $id "fedora") (contains "fedora" $like) (contains "rhel" $like) -}}
+fedora
+{{- else -}}
+other-linux
+{{- end -}}
+{{- end -}}

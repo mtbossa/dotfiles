@@ -1,0 +1,23 @@
+# Declarative package lists, consumed by .chezmoiscripts/run_onchange_before_05-install-packages-*.
+# Editing a list changes the rendered script, so chezmoi re-runs it on the next apply.
+packages:
+  arch:
+    pacman:
+      - bitwarden-cli
+      - github-cli
+      - jq
+      - atuin
+    aur:
+      - brave-bin
+      - visual-studio-code-bin
+      - zoom
+    # Keys match the prompts in .chezmoi.toml.tmpl; a group is installed when its flag is true.
+    optional:
+      installSlack:
+        aur: [slack-desktop]
+      installDiscord:
+        pacman: [discord]
+      installJetbrainsToolbox:
+        aur: [jetbrains-toolbox]
+      installTailscale:
+        pacman: [tailscale]

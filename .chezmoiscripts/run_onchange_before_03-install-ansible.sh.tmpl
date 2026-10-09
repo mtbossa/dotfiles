@@ -1,4 +1,4 @@
-{{ if and (eq .chezmoi.os "linux") (not (or (eq .chezmoi.osRelease.id "arch") (eq .chezmoi.osRelease.id "omarchy"))) -}}
+{{ if and (eq .chezmoi.os "linux") (ne (includeTemplate "osFamily" .) "arch") -}}
 #!/bin/bash
 set -euo pipefail
 

@@ -1,0 +1,41 @@
+{{- /* Downloaded declaratively by chezmoi (replaces the Ansible clone/download tasks).
+       Skipped on Arch/Omarchy, which ships its own shell stack and fonts. */ -}}
+{{ if ne (includeTemplate "osFamily" .) "arch" -}}
+[".oh-my-zsh"]
+    type = "archive"
+    url = "https://github.com/ohmyzsh/ohmyzsh/archive/master.tar.gz"
+    stripComponents = 1
+    refreshPeriod = "168h"
+
+{{ range $name := list "zsh-autosuggestions" "zsh-syntax-highlighting" -}}
+["oh-my-zsh-customization/plugins/{{ $name }}"]
+    type = "archive"
+    url = "https://github.com/zsh-users/{{ $name }}/archive/master.tar.gz"
+    stripComponents = 1
+    refreshPeriod = "168h"
+
+{{ end -}}
+[".local/share/eza/completions/zsh/_eza"]
+    type = "file"
+    url = "https://raw.githubusercontent.com/eza-community/eza/main/completions/zsh/_eza"
+    refreshPeriod = "168h"
+
+[".tmux/plugins/tpm"]
+    type = "archive"
+    url = "https://github.com/tmux-plugins/tpm/archive/master.tar.gz"
+    stripComponents = 1
+    refreshPeriod = "168h"
+
+[".config/tmux/plugins/catppuccin/tmux"]
+    type = "archive"
+    url = "https://github.com/catppuccin/tmux/archive/refs/tags/{{ .externals.catppuccinTmuxVersion }}.tar.gz"
+    stripComponents = 1
+
+{{ range .externals.nerdFonts -}}
+[".local/share/fonts/NerdFonts/{{ .name }}"]
+    type = "archive"
+    url = "https://github.com/ryanoasis/nerd-fonts/releases/download/{{ $.externals.nerdFontsVersion }}/{{ .name }}.zip"
+    include = [{{ .include | quote }}]
+
+{{ end -}}
+{{ end -}}
