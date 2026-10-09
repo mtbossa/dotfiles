@@ -1,4 +1,4 @@
-{{ if and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "arch") -}}
+{{ if and (eq .chezmoi.os "linux") (or (eq .chezmoi.osRelease.id "arch") (eq .chezmoi.osRelease.id "omarchy")) -}}
 #!/bin/bash
 # Hook our extras into Omarchy's ~/.bashrc without owning the file.
 set -euo pipefail
