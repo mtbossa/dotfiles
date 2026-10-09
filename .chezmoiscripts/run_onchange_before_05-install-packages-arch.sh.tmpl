@@ -22,4 +22,8 @@ sudo pacman -S --needed --noconfirm {{ $pacman | join " " }}
 
 yay -S --needed --noconfirm {{ $aur | join " " }} \
     || echo "WARNING: some AUR packages failed; install them manually." >&2
+{{ if .installTailscale }}
+# Only start the daemon. Log in later by hand: sudo tailscale up
+sudo systemctl enable --now tailscaled
+{{ end -}}
 {{ end -}}

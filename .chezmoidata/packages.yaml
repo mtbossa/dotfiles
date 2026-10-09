@@ -19,5 +19,5 @@ packages:
         aur: [slack-desktop]
       installJetbrainsToolbox:
         aur: [jetbrains-toolbox]
-      joinTailnet:
+      installTailscale:
         pacman: [tailscale]

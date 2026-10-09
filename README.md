@@ -11,7 +11,7 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply mtbossa
 You will be prompted for:
 1. Your full name, email, and GitHub username (stored in chezmoi config, never committed)
 2. Optional installs: Slack, JetBrains Toolbox, and (not on Omarchy, which ships them) Discord and Claude Code CLI
-   - Whether to add the machine to your tailnet (`tailscale up`; Tailscale is installed first)
+   - Whether to install Tailscale (log in afterwards by hand with `sudo tailscale up`)
 3. Your **Bitwarden master password** (when the SSH setup script runs)
 4. Your **sudo password** (when Ansible installs system packages)
 
@@ -66,7 +66,6 @@ Runs the Ansible playbook once. Installs:
 - **Dev tools**: git, curl, vim, gcc, htop, mise, Docker
 - **Apps**: Brave Browser, Postman (snap)
 - **Optional** (prompted at init time): Slack, Discord, JetBrains Toolbox, Claude Code CLI (skips gracefully if the install fails or times out — see task warning)
-- **Tailnet** (prompted): `run_once_after_22-join-tailnet` enables `tailscaled` and runs `tailscale up`; authorize the machine from the login URL it prints
 
 ---
 

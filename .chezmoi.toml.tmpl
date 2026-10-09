@@ -4,7 +4,7 @@
 {{- $githubUser := promptStringOnce . "githubUser" "GitHub username" -}}
 {{- $installSlack := promptBoolOnce . "installSlack" "Install Slack" -}}
 {{- $installJetbrainsToolbox := promptBoolOnce . "installJetbrainsToolbox" "Install JetBrains Toolbox" -}}
-{{- $joinTailnet := promptBoolOnce . "joinTailnet" "Add this machine to your tailnet (tailscale up)" -}}
+{{- $installTailscale := promptBoolOnce . "installTailscale" "Install Tailscale (log in later with: sudo tailscale up)" -}}
 {{- /* Omarchy/Arch already ships Discord and Claude Code, so only ask elsewhere. */ -}}
 {{- $installDiscord := false -}}
 {{- $installClaudeCode := false -}}
@@ -21,7 +21,7 @@
     installDiscord = {{ $installDiscord }}
     installJetbrainsToolbox = {{ $installJetbrainsToolbox }}
     installClaudeCode = {{ $installClaudeCode }}
-    joinTailnet = {{ $joinTailnet }}
+    installTailscale = {{ $installTailscale }}
 
 [edit]
     command = "code"
