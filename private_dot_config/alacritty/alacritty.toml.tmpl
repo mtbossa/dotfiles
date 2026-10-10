@@ -12,6 +12,12 @@ padding = { x = 20, y = 20 }
 dynamic_padding = true
 opacity = 0.9
 
+{{ if eq (includeTemplate "osFamily" .) "arch" -}}
+# Omarchy's size (foot uses 9 too); Alacritty's 11.25 default is too big on HiDPI-scaled laptops.
+[font]
+size = 9
+
+{{ end -}}
 [font.normal]
 family = "JetBrainsMono Nerd Font"
 style = "Regular"
