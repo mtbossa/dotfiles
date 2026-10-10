@@ -1,3 +1,7 @@
+{{- /* Alacritty >= 0.14 (Arch) moved `import` under [general]; Debian's apt package is older. */ -}}
+{{ if eq (includeTemplate "osFamily" .) "arch" -}}
+[general]
+{{ end -}}
 import = [ "{{ .chezmoi.homeDir }}/.config/alacritty/themes/iterm.toml" ]
 
 [colors]

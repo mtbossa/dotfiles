@@ -73,7 +73,8 @@ Runs the Ansible playbook once. Installs:
 
 Oh My Zsh, zsh-autosuggestions, zsh-syntax-highlighting, TPM, catppuccin/tmux, the eza zsh completion and the Nerd Fonts
 (JetBrainsMono, FiraCode; versions in `.chezmoidata/externals.yaml`) are chezmoi externals. They are fetched during
-`chezmoi apply`, refreshed weekly, and skipped on Arch/Omarchy. Oh My Zsh's own updater is disabled for that reason.
+`chezmoi apply` and refreshed weekly. Oh My Zsh's own updater is disabled for that reason. On Arch/Omarchy the eza completion
+and Nerd Fonts are skipped because the `eza` and `ttf-jetbrains-mono-nerd` packages already provide them.
 
 ---
 
@@ -87,9 +88,13 @@ On the `arch` family:
 - The Debian/Fedora installers and the Ansible playbook are skipped.
 - `run_onchange_before_05-install-packages-arch` installs the package lists in `.chezmoidata/packages.yaml`
   (pacman for repo packages, `yay` for AUR; Slack, JetBrains Toolbox and Tailscale are optional groups). Discord and Claude Code come with Omarchy, so they aren't installed or asked about. Editing the list re-runs it.
-- Omarchy owns the shell, terminal and prompt, so `.zshrc`, alacritty, starship and oh-my-zsh (and its externals) are not deployed. tmux is: config, TPM and catppuccin apply everywhere.
+- Shell, terminal and prompt match Ubuntu: `.zshrc`, oh-my-zsh (+ plugins), alacritty and starship configs are deployed everywhere.
+  Only `zsh` and `alacritty` are installed; starship, eza, fzf, zoxide, mise, atuin and the JetBrainsMono Nerd Font come from Omarchy's packages,
+  and `.zshrc` finds tools on `PATH` instead of assuming the Debian curl-install locations.
+- `run_onchange_before_06-setup-shell-terminal-arch` makes zsh the login shell and, on Omarchy, runs `omarchy-install-terminal alacritty`
+  so Super+Return opens Alacritty. Our alacritty config replaces Omarchy's, so Omarchy theme switching no longer recolors it.
 - `~/.bashrc` is never overwritten: `modify_dot_bashrc` appends one block that sources `~/.config/shell/extras.bash`
-  (atuin + personal aliases from `~/.config/shell/aliases.sh`). Omarchy's own bash defaults, fzf, zoxide, mise and starship stay.
+  (atuin + personal aliases from `~/.config/shell/aliases.sh`), so bash stays usable too.
 
 Try it on a fresh Omarchy install: `sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply mtbossa`.
 
@@ -152,6 +157,8 @@ dotfiles/
 │   ├── run_onchange_before_01-install-bw.sh.tmpl
 │   ├── run_onchange_before_02-install-gh.sh.tmpl
 │   ├── run_onchange_before_03-install-ansible.sh.tmpl
+│   ├── run_onchange_before_05-install-packages-arch.sh.tmpl
+│   ├── run_onchange_before_06-setup-shell-terminal-arch.sh.tmpl
 │   ├── run_onchange_before_10-setup-ssh-github.sh.tmpl
 │   ├── run_once_after_20-run-ansible.sh.tmpl
 │   └── run_once_after_21-setup-atuin.sh.tmpl

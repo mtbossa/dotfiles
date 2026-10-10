@@ -1,10 +1,6 @@
 README.md
 reset-bootstrap.sh
 {{ if eq (includeTemplate "osFamily" .) "arch" }}
-# Omarchy owns the shell, terminal and prompt setup; don't overwrite it (tmux is ours).
-.zshrc
+# The Ansible playbook is Debian-only; Arch installs come from .chezmoidata/packages.yaml.
 .bootstrap
-oh-my-zsh-customization
-.config/alacritty
-.config/starship.toml
 {{ end }}

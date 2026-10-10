@@ -1,5 +1,6 @@
 {{- /* Downloaded declaratively by chezmoi (replaces the Ansible clone/download tasks).
-       The shell/font ones are skipped on Arch/Omarchy, which ships its own stack; tmux plugins are for everyone. */ -}}
+       oh-my-zsh, its plugins and tmux plugins are for everyone; the eza completion and Nerd Fonts
+       are skipped on Arch/Omarchy, whose eza and ttf-jetbrains-mono-nerd packages already provide them. */ -}}
 [".tmux/plugins/tpm"]
     type = "archive"
     url = "https://github.com/tmux-plugins/tpm/archive/master.tar.gz"
@@ -11,7 +12,6 @@
     url = "https://github.com/catppuccin/tmux/archive/refs/tags/{{ .externals.catppuccinTmuxVersion }}.tar.gz"
     stripComponents = 1
 
-{{ if ne (includeTemplate "osFamily" .) "arch" -}}
 [".oh-my-zsh"]
     type = "archive"
     url = "https://github.com/ohmyzsh/ohmyzsh/archive/master.tar.gz"
@@ -26,6 +26,7 @@
     refreshPeriod = "168h"
 
 {{ end -}}
+{{ if ne (includeTemplate "osFamily" .) "arch" -}}
 [".local/share/eza/completions/zsh/_eza"]
     type = "file"
     url = "https://raw.githubusercontent.com/eza-community/eza/main/completions/zsh/_eza"

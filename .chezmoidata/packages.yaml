@@ -1,5 +1,5 @@
 # Declarative package lists, consumed by .chezmoiscripts/run_onchange_before_05-install-packages-*.
-# Omarchy already ships discord and claude, so they are not listed.
+# Omarchy already ships discord, claude, starship, eza, fzf, zoxide, mise and the JetBrainsMono Nerd Font, so they are not listed.
 # Editing a list changes the rendered script, so chezmoi re-runs it on the next apply.
 packages:
   arch:
@@ -9,6 +9,8 @@ packages:
       - jq
       - atuin
       - tmux
+      - zsh
+      - alacritty
     aur:
       - brave-bin
       - visual-studio-code-bin
