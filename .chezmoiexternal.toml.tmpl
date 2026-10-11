@@ -7,11 +7,13 @@
     url = "https://github.com/tmux-plugins/tpm.git"
     refreshPeriod = "168h"
 
+{{ if ne (includeTemplate "isOmarchy" .) "true" -}}
 [".config/tmux/plugins/catppuccin/tmux"]
     type = "archive"
     url = "https://github.com/catppuccin/tmux/archive/refs/tags/{{ .externals.catppuccinTmuxVersion }}.tar.gz"
     stripComponents = 1
 
+{{ end -}}
 [".oh-my-zsh"]
     type = "archive"
     url = "https://github.com/ohmyzsh/ohmyzsh/archive/master.tar.gz"

@@ -1,0 +1,2 @@
+{{- /* "true" on Omarchy, which owns colors and styles there, so only keybindings and plugins get layered on top. */ -}}
+{{- if stat "/usr/share/omarchy" -}}true{{- else -}}false{{- end -}}

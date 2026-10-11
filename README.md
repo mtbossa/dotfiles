@@ -88,13 +88,22 @@ On the `arch` family:
 - The Debian/Fedora installers and the Ansible playbook are skipped.
 - `run_onchange_before_05-install-packages-arch` installs the package lists in `.chezmoidata/packages.yaml`
   (pacman for repo packages, `yay` for AUR; Slack, JetBrains Toolbox and Tailscale are optional groups). Discord and Claude Code come with Omarchy, so they aren't installed or asked about. Editing the list re-runs it.
-- Shell, terminal and prompt match Ubuntu: `.zshrc`, oh-my-zsh (+ plugins), alacritty and starship configs are deployed everywhere.
+- Shell, terminal and prompt match Ubuntu: `.zshrc`, oh-my-zsh (+ plugins), alacritty and starship configs are deployed everywhere
+  (except the styling on Omarchy; see below).
   Only `zsh` and `alacritty` are installed; starship, eza, fzf, zoxide, mise, atuin and the JetBrainsMono Nerd Font come from Omarchy's packages,
   and `.zshrc` finds tools on `PATH` instead of assuming the Debian curl-install locations.
 - `run_onchange_before_06-setup-shell-terminal-arch` makes zsh the login shell and, on Omarchy, runs `omarchy-install-terminal alacritty`
-  so Super+Return opens Alacritty. Our alacritty config replaces Omarchy's, so Omarchy theme switching no longer recolors it.
+  so Super+Return opens Alacritty.
 - `~/.bashrc` is never overwritten: `modify_dot_bashrc` appends one block that sources `~/.config/shell/extras.bash`
   (atuin + personal aliases from `~/.config/shell/aliases.sh`), so bash stays usable too.
+
+On Omarchy itself (`.chezmoitemplates/isOmarchy`: `/usr/share/omarchy` exists), Omarchy owns colors and styles, and only
+keybindings, plugins and behavior are layered on top. Plain Arch and every other OS keep the full styled configs.
+
+- tmux sources `/usr/share/omarchy/config/tmux/tmux.conf`, then adds the prefix, keybindings and TPM plugins; no catppuccin.
+- Alacritty imports `/usr/share/omarchy/config/alacritty/alacritty.toml` and adds bindings (imported arrays are appended,
+  so Omarchy's bindings stay); no iTerm palette, font or opacity. Theme switching recolors it.
+- starship isn't managed, so Omarchy's prompt stays.
 
 Try it on a fresh Omarchy install: `sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply mtbossa`.
 

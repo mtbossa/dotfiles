@@ -4,3 +4,8 @@ reset-bootstrap.sh
 # The Ansible playbook is Debian-only; Arch installs come from .chezmoidata/packages.yaml.
 .bootstrap
 {{ end }}
+{{ if eq (includeTemplate "isOmarchy" .) "true" }}
+# Omarchy owns the look: keep its starship prompt, and Alacritty uses its theme instead of iTerm's.
+.config/starship.toml
+.config/alacritty/themes
+{{ end }}

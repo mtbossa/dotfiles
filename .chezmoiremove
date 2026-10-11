@@ -5,3 +5,8 @@
 # tmux moved to ~/.config/tmux (Omarchy ships a tmux.conf there, and tmux loads both files)
 .tmux.conf
 .tmux/plugins
+{{ if eq (includeTemplate "isOmarchy" .) "true" }}
+# Styles Omarchy handles itself
+.config/tmux/plugins/catppuccin
+.config/alacritty/themes
+{{ end }}

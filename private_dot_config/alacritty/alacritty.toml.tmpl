@@ -1,28 +1,30 @@
-{{- /* Alacritty >= 0.14 (Arch) moved `import` under [general]; Debian's apt package is older. */ -}}
+{{- /* On Omarchy, its config (theme, font, padding, opacity via Hyprland) is the base and we only add bindings;
+       Alacritty appends imported arrays, so Omarchy's own keyboard.bindings stay. Elsewhere, the full styled config. */ -}}
+{{ if eq (includeTemplate "isOmarchy" .) "true" -}}
+[general]
+import = [ "/usr/share/omarchy/config/alacritty/alacritty.toml" ]
+
+[selection]
+save_to_clipboard = true
+
+[keyboard]
+bindings = [
+    { key = "Return", mods = "Super|Shift", action = "SpawnNewInstance" },
+]
+{{ else -}}
 {{ if eq (includeTemplate "osFamily" .) "arch" -}}
 [general]
-# Follow the Omarchy theme: inside tmux, Omarchy paints panes with the theme's colors
-# (omarchy-theme-set-tmux), so a different palette here shows up as a mismatched block.
-import = [ "{{ .chezmoi.homeDir }}/.local/state/omarchy/current/theme/alacritty.toml" ]
-{{ else -}}
+{{ end -}}
 import = [ "{{ .chezmoi.homeDir }}/.config/alacritty/themes/iterm.toml" ]
-{{ end }}
+
 [colors]
 draw_bold_text_with_bright_colors = true
-# Apply window.opacity to explicit background colors too (e.g. tmux's window-style), not just the default one.
-transparent_background_colors = true
 
 [window]
 padding = { x = 20, y = 20 }
 dynamic_padding = true
 opacity = 0.9
 
-{{ if eq (includeTemplate "osFamily" .) "arch" -}}
-# Omarchy's size (foot uses 9 too); Alacritty's 11.25 default is too big on HiDPI-scaled laptops.
-[font]
-size = 9
-
-{{ end -}}
 [font.normal]
 family = "JetBrainsMono Nerd Font"
 style = "Regular"
@@ -49,3 +51,4 @@ shape = "Beam"
 bindings = [
     { key = "Return", mods = "Super|Shift", action = "SpawnNewInstance" },
 ]
+{{ end -}}
