@@ -8,5 +8,4 @@
 {{ if eq (includeTemplate "isOmarchy" .) "true" }}
 # Styles Omarchy handles itself
 .config/tmux/plugins/catppuccin
-.config/alacritty/themes
 {{ end }}
