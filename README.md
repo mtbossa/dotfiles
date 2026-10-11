@@ -52,7 +52,7 @@ chezmoi deploys all managed dotfiles to `$HOME`:
 | `dot_gitconfig.tmpl` | `~/.gitconfig` |
 | `dot_zshrc` | `~/.zshrc` |
 | `modify_dot_bashrc` | `~/.bashrc` (adds one managed block; keeps the distro's own file) |
-| `dot_tmux.conf` | `~/.tmux.conf` |
+| `private_dot_config/tmux/tmux.conf` | `~/.config/tmux/tmux.conf` |
 | `dot_bootstrap/` | `~/.bootstrap/` |
 | `private_dot_config/` | `~/.config/` |
 | `oh-my-zsh-customization/` | `~/oh-my-zsh-customization/` |
@@ -165,12 +165,11 @@ dotfiles/
 ├── dot_gitconfig.tmpl              # ~/.gitconfig (SSH signing configured)
 ├── dot_zshrc                       # ~/.zshrc
 ├── dot_bashrc                      # ~/.bashrc
-├── dot_tmux.conf                   # ~/.tmux.conf
 ├── dot_bootstrap/                  # ~/.bootstrap/ (Ansible playbook)
 │   ├── setup.yml
 │   └── requirements.yml
 ├── oh-my-zsh-customization/        # ~/oh-my-zsh-customization/
-└── private_dot_config/             # ~/.config/
+└── private_dot_config/             # ~/.config/ (incl. tmux/tmux.conf)
 ```
 
 Files without a chezmoi prefix (`README.md`, `.gitignore`, `.vscode/`) are repo-level only and are never deployed to `$HOME`.

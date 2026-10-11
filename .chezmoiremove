@@ -1,3 +1,7 @@
 # Legacy alacritty configs (alacritty.toml replaced them)
 .config/alacritty/alacritty.yml
 .config/alacritty/themes/iterm.yaml
+
+# tmux moved to ~/.config/tmux (Omarchy ships a tmux.conf there, and tmux loads both files)
+.tmux.conf
+.tmux/plugins
