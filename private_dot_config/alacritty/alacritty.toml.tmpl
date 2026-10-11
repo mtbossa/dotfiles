@@ -1,11 +1,16 @@
 {{- /* Alacritty >= 0.14 (Arch) moved `import` under [general]; Debian's apt package is older. */ -}}
 {{ if eq (includeTemplate "osFamily" .) "arch" -}}
 [general]
-{{ end -}}
+# Follow the Omarchy theme: inside tmux, Omarchy paints panes with the theme's colors
+# (omarchy-theme-set-tmux), so a different palette here shows up as a mismatched block.
+import = [ "{{ .chezmoi.homeDir }}/.local/state/omarchy/current/theme/alacritty.toml" ]
+{{ else -}}
 import = [ "{{ .chezmoi.homeDir }}/.config/alacritty/themes/iterm.toml" ]
-
+{{ end }}
 [colors]
 draw_bold_text_with_bright_colors = true
+# Apply window.opacity to explicit background colors too (e.g. tmux's window-style), not just the default one.
+transparent_background_colors = true
 
 [window]
 padding = { x = 20, y = 20 }
