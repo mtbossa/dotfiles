@@ -1,10 +1,10 @@
 {{- /* Downloaded declaratively by chezmoi (replaces the Ansible clone/download tasks).
        oh-my-zsh, its plugins and tmux plugins are for everyone; the eza completion and Nerd Fonts
        are skipped on Arch/Omarchy, whose eza and ttf-jetbrains-mono-nerd packages already provide them. */ -}}
+{{- /* A git checkout, not an archive: TPM only treats a plugin dir as installed if it has a git remote. */}}
 [".config/tmux/plugins/tpm"]
-    type = "archive"
-    url = "https://github.com/tmux-plugins/tpm/archive/master.tar.gz"
-    stripComponents = 1
+    type = "git-repo"
+    url = "https://github.com/tmux-plugins/tpm.git"
     refreshPeriod = "168h"
 
 [".config/tmux/plugins/catppuccin/tmux"]
