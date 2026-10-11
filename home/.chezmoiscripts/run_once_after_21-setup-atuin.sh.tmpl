@@ -14,16 +14,7 @@ if [ ! -x "${ATUIN_BIN}" ]; then
     exit 1
 fi
 
-# Helper: get a field from a uniquely-named Bitwarden item
-bw_get() {
-    local item_name="$1"
-    local field="$2"   # jq path, e.g. .login.password or .login.username
-    bw list items --search "${item_name}" --session "${BW_SESSION}" \
-        | jq -r --arg name "${item_name}" \
-            '.[] | select(.name == $name) | '"${field}"
-}
-
-{{ template "bw-unlock" . }}
+{{ template "bitwarden" . }}
 
 # --- 1. Set sync server before login ---
 ATUIN_SYNC_ADDRESS=$(bw_get "atuin-server" ".login.uris[0].uri")

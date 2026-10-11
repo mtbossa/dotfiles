@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Personal aliases shared by bash (Omarchy) and zsh (Debian/Ubuntu).
+# Personal aliases shared by bash (via extras.bash) and zsh (via ~/.config/oh-my-zsh/aliases.zsh).
 alias cl="clear"
 alias lzg="lazygit"
 

@@ -21,7 +21,7 @@
     refreshPeriod = "168h"
 
 {{ range $name := list "zsh-autosuggestions" "zsh-syntax-highlighting" -}}
-["oh-my-zsh-customization/plugins/{{ $name }}"]
+[".config/oh-my-zsh/plugins/{{ $name }}"]
     type = "archive"
     url = "https://github.com/zsh-users/{{ $name }}/archive/master.tar.gz"
     stripComponents = 1

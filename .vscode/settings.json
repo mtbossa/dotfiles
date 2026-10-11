@@ -12,26 +12,23 @@
     "*.sh": "shellscript",
     // --- Templates (chezmoi) ---
     "*.sh.tmpl": "shellscript",
-    "*.zshrc.tmpl": "shellscript",
+    "modify_dot_bashrc": "shellscript",
     "*.tmpl": "plaintext",
     // --- Git ---
     "dot_gitconfig": "ini",
     "dot_gitignore": "gitignore",
     ".gitignore": "gitignore",
     // --- Tmux ---
-    "dot_tmux.conf": "tmux",
+    "**/tmux/tmux.conf.tmpl": "tmux",
     "*.tmux": "tmux",
-    // --- Starship ---
-    "dot_config/starship.toml": "toml",
+    // --- TOML (starship, alacritty, chezmoi) ---
     "*.toml": "toml",
+    "*.toml.tmpl": "toml",
     // --- YAML (Ansible, config) ---
     "*.yml": "yaml",
     "*.yaml": "yaml",
     // --- JSON ---
     "*.json": "json",
-    // --- SSH ---
-    "dot_ssh/config": "ssh_config",
-    "ssh_config": "ssh_config",
     // --- Env files ---
     "*.env": "dotenv",
     // --- Misc ---

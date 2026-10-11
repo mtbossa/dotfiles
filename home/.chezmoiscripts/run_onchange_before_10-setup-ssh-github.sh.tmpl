@@ -29,9 +29,9 @@ fi
 PUB_KEY_BODY=$(awk '{print $1, $2}' "${KEY_PATH}.pub")
 
 # --- 2. Get GitHub token from Bitwarden ---
-{{ template "bw-unlock" . }}
+{{ template "bitwarden" . }}
 
-GH_TOKEN=$(bw list items --search "github-pat" --session "${BW_SESSION}" | jq -r '.[0].login.password')
+GH_TOKEN=$(bw_get "github-pat" ".login.password")
 if [ -z "${GH_TOKEN}" ] || [ "${GH_TOKEN}" = "null" ]; then
     echo "ERROR: Could not retrieve GitHub token from Bitwarden" >&2
     exit 1
