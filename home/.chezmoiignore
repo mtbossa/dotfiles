@@ -1,0 +1,6 @@
+{{- /* Targets not deployed on this machine. Repo-only files live outside home/ (see ../.chezmoiroot), so they need no entry here. */ -}}
+{{ if eq (includeTemplate "isOmarchy" .) "true" }}
+# Omarchy owns the look: keep its starship prompt, and Alacritty uses its theme instead of iTerm's.
+.config/starship.toml
+.config/alacritty/themes
+{{ end }}

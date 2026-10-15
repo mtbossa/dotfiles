@@ -1,0 +1,29 @@
+{{ if eq (includeTemplate "osFamily" .) "arch" -}}
+{{- $pacman := .packages.arch.pacman -}}
+{{- $aur := .packages.arch.aur -}}
+{{- range $flag, $group := .packages.arch.optional -}}
+{{-   if index $ $flag -}}
+{{-     $pacman = concat $pacman (get $group "pacman" | default (list)) -}}
+{{-     $aur = concat $aur (get $group "aur" | default (list)) -}}
+{{-   end -}}
+{{- end -}}
+#!/bin/bash
+# Arch / Omarchy: install only what Omarchy doesn't already ship.
+# Package lists live in .chezmoidata/packages.yaml and are rendered below, so changing them re-runs this script.
+set -euo pipefail
+
+# A fresh install can have no synced package databases ("database file for core
+# does not exist"). Do a full upgrade then: syncing without upgrading (-Sy) is unsupported on Arch.
+if ! ls /var/lib/pacman/sync/*.db &>/dev/null; then
+    sudo pacman -Syu --noconfirm
+fi
+
+sudo pacman -S --needed --noconfirm {{ $pacman | join " " }}
+
+yay -S --needed --noconfirm {{ $aur | join " " }} \
+    || echo "WARNING: some AUR packages failed; install them manually." >&2
+{{ if .installTailscale }}
+# Only start the daemon. Log in later by hand: sudo tailscale up
+sudo systemctl enable --now tailscaled
+{{ end -}}
+{{ end -}}

@@ -1,0 +1,70 @@
+{{ if eq (includeTemplate "isOmarchy" .) "true" -}}
+# Omarchy's config is the base (it owns the look and follows the theme); this adds keybindings and plugins.
+source-file /usr/share/omarchy/config/tmux/tmux.conf
+
+{{ end -}}
+
+unbind C-b
+set -g prefix C-Space                   # Change Prefix to CTRL Space
+set -gu prefix2                         # Omarchy sets C-b as a second prefix
+bind -N "Send prefix" C-Space send-prefix
+bind -N "Reload configuration" q source-file ~/.config/tmux/tmux.conf\; display-message "Configuration reloaded"
+
+set -g base-index 1                     # Start Counting on 1
+setw -g pane-base-index 1               # Start pane counting on 1 too
+set -g renumber-windows on              # Renumber windows if some is closed
+setw -g mode-keys vi                    # Use vi keys in copy mode
+set -g detach-on-destroy off            # Move to the last active session if current destroyed
+set -g history-limit 50000
+set -sg escape-time 10                  # Don't delay Esc in vim
+set -g focus-events on
+
+set-option -g mouse on                  # Enable Mouse support Click/Resize
+set-option -g status-position top       # Move tmux status position to top
+set -g default-terminal "tmux-256color"
+set -ag terminal-overrides ",*:RGB"     # True color
+
+set -g @plugin 'sainnhe/tmux-fzf'
+
+# Split windows in current folder/session
+bind -N "Split pane vertically" '"' split-window -c "#{pane_current_path}"
+bind -N "Split pane horizontally" % split-window -h -c "#{pane_current_path}"
+bind -N "Toggle synchronize-panes" a set-window-option synchronize-panes\; display-message "synchronize-panes is now #{?pane_synchronized,on,off}"
+
+# bind vi keys to move panels
+bind -N "Focus pane left" h select-pane -L
+bind -N "Focus pane down" j select-pane -D
+bind -N "Focus pane up" k select-pane -U
+bind -N "Focus pane right" l select-pane -R
+
+# bind keys to resize panel
+bind -N "Resize pane left" C-h resize-pane -L 5
+bind -N "Resize pane up" C-k resize-pane -U 5
+bind -N "Resize pane down" C-j resize-pane -D 5
+bind -N "Resize pane right" C-l resize-pane -R 5
+
+{{ if ne (includeTemplate "isOmarchy" .) "true" -}}
+# Catppuccin (manual install - v2.x)
+set -g @catppuccin_flavor 'frappe'
+set -g @catppuccin_window_status_style "rounded"
+set -g @catppuccin_window_text " #W"
+set -g @catppuccin_window_current_text " #W"
+
+run ~/.config/tmux/plugins/catppuccin/tmux/catppuccin.tmux
+
+# Status line
+set -g status-right-length 100
+set -g status-left-length 100
+set -g status-left ""
+set -g status-right "#{E:@catppuccin_status_directory}"
+set -ag status-right "#{E:@catppuccin_status_session}"
+
+{{ end -}}
+# TPM plugins
+set -g @plugin 'tmux-plugins/tmux-resurrect'    # Restore tmux environment after system restart
+set -g @plugin 'tmux-plugins/tmux-continuum'    # Automatic restoring and continuous saving
+set -g @plugin 'tmux-plugins/tpm'
+
+set -g @continuum-restore 'on'
+
+run '~/.config/tmux/plugins/tpm/tpm'

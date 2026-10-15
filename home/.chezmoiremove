@@ -1,0 +1,18 @@
+{{- /* Targets deleted on apply: leftovers from older layouts of this repo. Ignored targets are never removed. */ -}}
+# Legacy alacritty configs (alacritty.toml replaced them)
+.config/alacritty/alacritty.yml
+.config/alacritty/themes/iterm.yaml
+
+# tmux moved to ~/.config/tmux (Omarchy ships a tmux.conf there, and tmux loads both files)
+.tmux.conf
+.tmux/plugins
+
+# The Ansible playbook runs from the repo now instead of a deployed copy
+.bootstrap
+
+# ZSH_CUSTOM moved to ~/.config/oh-my-zsh
+oh-my-zsh-customization
+{{ if eq (includeTemplate "isOmarchy" .) "true" }}
+# Styles Omarchy handles itself
+.config/tmux/plugins/catppuccin
+{{ end }}

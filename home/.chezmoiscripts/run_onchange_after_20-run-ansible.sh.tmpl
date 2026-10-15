@@ -1,0 +1,16 @@
+{{ if and (eq .chezmoi.os "linux") (ne (includeTemplate "osFamily" .) "arch") -}}
+{{- $ansible := joinPath .chezmoi.workingTree "ansible" -}}
+#!/bin/bash
+# Debian/Fedora: installs system packages with the playbook in the repo's ansible/ (not deployed to $HOME).
+# Re-runs when the playbook, its requirements or the optional-install answers change.
+# setup.yml hash: {{ include (joinPath $ansible "setup.yml") | sha256sum }}
+# requirements.yml hash: {{ include (joinPath $ansible "requirements.yml") | sha256sum }}
+set -euo pipefail
+
+ansible-galaxy collection install -r "{{ $ansible }}/requirements.yml"
+ansible-galaxy role install -r "{{ $ansible }}/requirements.yml"
+ansible-playbook "{{ $ansible }}/setup.yml" --ask-become-pass \
+  --extra-vars "install_slack={{ .installSlack }} install_discord={{ .installDiscord }} install_jetbrains_toolbox={{ .installJetbrainsToolbox }} install_claude_code={{ .installClaudeCode }} install_tailscale={{ .installTailscale }}"
+
+echo "Ansible setup complete."
+{{ end -}}

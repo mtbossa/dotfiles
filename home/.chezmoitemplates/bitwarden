@@ -1,0 +1,31 @@
+# Shared Bitwarden helpers, included in scripts with {{`{{ template "bitwarden" . }}`}}.
+# Unlocks once and caches BW_SESSION in a 600-perm file under /tmp, so the master password is asked
+# only once across the bootstrap; run_after_99-bw-lock locks the vault and deletes the file.
+BW_SESSION_FILE="/tmp/chezmoi-bw-session-${UID}"
+
+_load_cached_bw_session() {
+    [ -r "${BW_SESSION_FILE}" ] || return 1
+    BW_SESSION=$(cat "${BW_SESSION_FILE}")
+    [ -n "${BW_SESSION}" ] || return 1
+    bw status --session "${BW_SESSION}" 2>/dev/null | grep -q '"status":"unlocked"' || return 1
+    export BW_SESSION
+    return 0
+}
+
+if ! _load_cached_bw_session; then
+    echo "Unlocking Bitwarden..."
+    if ! bw login --check &>/dev/null; then
+        BW_SESSION=$(bw login --raw)
+    else
+        BW_SESSION=$(bw unlock --raw)
+    fi
+    (umask 077 && printf '%s' "${BW_SESSION}" > "${BW_SESSION_FILE}")
+    export BW_SESSION
+fi
+
+# bw_get <item name> <jq path>: a field from the item with exactly that name (bw's --search is fuzzy).
+# e.g. bw_get "github-pat" ".login.password"
+bw_get() {
+    bw list items --search "$1" --session "${BW_SESSION}" \
+        | jq -r --arg name "$1" '.[] | select(.name == $name) | '"$2"
+}

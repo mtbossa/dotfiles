@@ -1,0 +1,28 @@
+{{- $family := includeTemplate "osFamily" . -}}
+{{- $name := promptStringOnce . "name" "Full name" -}}
+{{- $email := promptStringOnce . "email" "Email address" -}}
+{{- $githubUser := promptStringOnce . "githubUser" "GitHub username" -}}
+{{- $installSlack := promptBoolOnce . "installSlack" "Install Slack" -}}
+{{- $installJetbrainsToolbox := promptBoolOnce . "installJetbrainsToolbox" "Install JetBrains Toolbox" -}}
+{{- $installTailscale := promptBoolOnce . "installTailscale" "Install Tailscale (log in later with: sudo tailscale up)" -}}
+{{- /* Omarchy/Arch already ships Discord and Claude Code, so only ask elsewhere. */ -}}
+{{- $installDiscord := false -}}
+{{- $installClaudeCode := false -}}
+{{- if ne $family "arch" -}}
+{{-   $installDiscord = promptBoolOnce . "installDiscord" "Install Discord" -}}
+{{-   $installClaudeCode = promptBoolOnce . "installClaudeCode" "Install Claude Code CLI" -}}
+{{- end -}}
+
+[data]
+    name = {{ $name | quote }}
+    email = {{ $email | quote }}
+    githubUser = {{ $githubUser | quote }}
+    installSlack = {{ $installSlack }}
+    installDiscord = {{ $installDiscord }}
+    installJetbrainsToolbox = {{ $installJetbrainsToolbox }}
+    installClaudeCode = {{ $installClaudeCode }}
+    installTailscale = {{ $installTailscale }}
+
+[edit]
+    command = "code"
+    args = ["--wait"]

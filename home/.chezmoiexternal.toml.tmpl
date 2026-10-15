@@ -1,0 +1,44 @@
+{{- /* Downloaded declaratively by chezmoi (replaces the Ansible clone/download tasks).
+       oh-my-zsh, its plugins and tmux plugins are for everyone; the eza completion and Nerd Fonts
+       are skipped on Arch/Omarchy, whose eza and ttf-jetbrains-mono-nerd packages already provide them. */ -}}
+{{- /* A git checkout, not an archive: TPM only treats a plugin dir as installed if it has a git remote. */}}
+[".config/tmux/plugins/tpm"]
+    type = "git-repo"
+    url = "https://github.com/tmux-plugins/tpm.git"
+    refreshPeriod = "168h"
+
+{{ if ne (includeTemplate "isOmarchy" .) "true" -}}
+[".config/tmux/plugins/catppuccin/tmux"]
+    type = "archive"
+    url = "https://github.com/catppuccin/tmux/archive/refs/tags/{{ .externals.catppuccinTmuxVersion }}.tar.gz"
+    stripComponents = 1
+
+{{ end -}}
+[".oh-my-zsh"]
+    type = "archive"
+    url = "https://github.com/ohmyzsh/ohmyzsh/archive/master.tar.gz"
+    stripComponents = 1
+    refreshPeriod = "168h"
+
+{{ range $name := list "zsh-autosuggestions" "zsh-syntax-highlighting" -}}
+[".config/oh-my-zsh/plugins/{{ $name }}"]
+    type = "archive"
+    url = "https://github.com/zsh-users/{{ $name }}/archive/master.tar.gz"
+    stripComponents = 1
+    refreshPeriod = "168h"
+
+{{ end -}}
+{{ if ne (includeTemplate "osFamily" .) "arch" -}}
+[".local/share/eza/completions/zsh/_eza"]
+    type = "file"
+    url = "https://raw.githubusercontent.com/eza-community/eza/main/completions/zsh/_eza"
+    refreshPeriod = "168h"
+
+{{ range .externals.nerdFonts -}}
+[".local/share/fonts/NerdFonts/{{ .name }}"]
+    type = "archive"
+    url = "https://github.com/ryanoasis/nerd-fonts/releases/download/{{ $.externals.nerdFontsVersion }}/{{ .name }}.zip"
+    include = [{{ .include | quote }}]
+
+{{ end -}}
+{{ end -}}

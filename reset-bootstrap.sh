@@ -1,7 +1,7 @@
 #!/bin/bash
 # reset-bootstrap.sh
 # Resets chezmoi state and undoes bootstrap actions so you can re-run from scratch.
-# Does NOT uninstall system packages (bw, gh, ansible) — they're idempotent on re-run.
+# Does NOT uninstall system packages (bw, gh, ansible): the install scripts are idempotent on re-run.
 
 set -euo pipefail
 
@@ -21,9 +21,11 @@ echo "This will undo the bootstrap so you can re-run chezmoi apply from scratch.
 echo ""
 
 # --- 1. chezmoi script state ---
-# This is the most important step — forces all run_once_ and run_onchange_ scripts to re-run.
+# This is the most important step: forces every script to re-run. chezmoi tracks
+# run_once_ scripts in scriptState and run_onchange_ scripts in entryState.
 echo -e "${GREEN}[1/5] Clearing chezmoi script state...${NC}"
 chezmoi state delete-bucket --bucket=scriptState 2>/dev/null || true
+chezmoi state delete-bucket --bucket=entryState 2>/dev/null || true
 echo "Done."
 
 # --- 2. SSH key ---
@@ -68,14 +70,18 @@ fi
 # --- 5. Deployed dotfiles (optional, aggressive) ---
 echo ""
 echo -e "${GREEN}[5/5] Deployed dotfiles${NC}"
-echo -e "${RED}WARNING: This removes all chezmoi-managed files from your home directory (.gitconfig, .zshrc, .bashrc, etc.)${NC}"
+echo -e "${RED}WARNING: This removes the chezmoi-managed files from your home directory (.gitconfig, .zshrc, ~/.config/..., etc.)${NC}"
 if confirm "Remove all chezmoi-managed dotfiles from \$HOME? (skip this if you just want scripts to re-run)"; then
-    chezmoi managed --include=files --path-style=absolute | xargs -r rm -f
-    echo "All managed dotfiles removed."
+    # Files managed by a modify_ script (e.g. ~/.bashrc) belong to the distro; chezmoi only edits them, so keep them.
+    while IFS= read -r target; do
+        [[ $(basename "$(chezmoi source-path "${target}")") == modify_* ]] && continue
+        rm -f "${target}"
+    done < <(chezmoi managed --include=files --exclude=externals --path-style=absolute)
+    echo "Managed dotfiles removed."
 else
     echo "Skipped — only script state was cleared."
 fi
 
 echo ""
 echo -e "${GREEN}Reset complete.${NC}"
-echo "Run 'chezmoi apply' (or see bootstrap.sh for a fresh machine) to bootstrap again."
+echo "Run 'chezmoi apply' to bootstrap again (see README.md for a fresh machine)."

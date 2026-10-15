@@ -1,0 +1,9 @@
+#!/bin/bash
+# Deploys .chezmoitemplates/atuin-config.toml but keeps the machine's sync_address,
+# which run_once_after_21-setup-atuin writes from Bitwarden with `atuin config set`.
+current=$(cat)
+sync_address=$(grep -m1 '^sync_address[[:space:]]*=' <<<"${current}" || true)
+[[ -n "${sync_address}" ]] && printf '%s\n\n' "${sync_address}"
+cat <<'EOF'
+{{ includeTemplate "atuin-config.toml" . | trim }}
+EOF

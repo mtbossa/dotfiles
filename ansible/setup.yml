@@ -1,0 +1,351 @@
+---
+- name: Machine setup
+  hosts: localhost
+  become: true
+  connection: local
+  gather_facts: true
+
+  vars:
+    remote_regular_user: "{{ ansible_env.SUDO_USER | default(ansible_user_id) }}"
+    install_slack: false
+    install_discord: false
+    install_jetbrains_toolbox: false
+    install_claude_code: false
+    install_tailscale: false
+    snap_packages:
+      - postman
+
+  tasks:
+    - name: Remove conflicting VS Code apt source files (if any)
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/vscode.sources
+        - /usr/share/keyrings/microsoft.gpg
+
+    - name: Install packages
+      ansible.builtin.apt:
+        name:
+          - curl
+          - git
+          - htop
+          - vim
+          - gcc
+          - zsh
+          - tmux
+          - alacritty
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+          - snapd
+          - unzip
+          - jq
+        state: present
+        update_cache: true
+
+    - name: Change shell to zsh
+      ansible.builtin.user:
+        name: "{{ remote_regular_user }}"
+        shell: /usr/bin/zsh
+
+    # Starship Installation
+    - name: Check if starship is already installed
+      ansible.builtin.command: which starship
+      register: starship_installed
+      changed_when: false
+      failed_when: false
+
+    - name: Install Starship
+      ansible.builtin.shell: "curl -sS https://starship.rs/install.sh | sh -s -- --yes"
+      args:
+        executable: /bin/bash
+      when: starship_installed.rc != 0
+
+    # Brave Browser Installation
+    - name: Add Brave Browser GPG key
+      ansible.builtin.get_url:
+        url: https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+        dest: /usr/share/keyrings/brave-browser-archive-keyring.gpg
+        mode: "0644"
+
+    - name: Add Brave Browser repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main"
+        state: present
+        update_cache: true
+
+    - name: Install Brave Browser
+      ansible.builtin.apt:
+        name: brave-browser
+        state: present
+
+    # VS Code Installation
+    - name: Install VS Code
+      block:
+        - name: Add Microsoft GPG key for VS Code
+          ansible.builtin.shell: |
+            wget -qO- https://packages.microsoft.com/keys/microsoft.asc \
+              | gpg --dearmor > /etc/apt/keyrings/packages.microsoft.gpg
+          args:
+            executable: /bin/bash
+            creates: /etc/apt/keyrings/packages.microsoft.gpg
+
+        - name: Add VS Code apt repository
+          ansible.builtin.apt_repository:
+            repo: "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main"
+            state: present
+            filename: vscode
+            update_cache: true
+
+        - name: Install VS Code
+          ansible.builtin.apt:
+            name: code
+            state: present
+      rescue:
+        - name: Warn about VS Code installation failure
+          ansible.builtin.debug:
+            msg: "VS Code installation failed. Skipping and continuing with the rest of the setup."
+
+    # Tailscale (log in manually afterward with `sudo tailscale up`)
+    - name: Check if Tailscale is already installed
+      ansible.builtin.command: which tailscale
+      register: tailscale_installed
+      changed_when: false
+      failed_when: false
+      when: install_tailscale | bool
+
+    - name: Install Tailscale
+      ansible.builtin.shell: "curl -fsSL https://tailscale.com/install.sh | sh"
+      args:
+        executable: /bin/bash
+      when: install_tailscale | bool and tailscale_installed.rc != 0
+
+    # Slack Installation
+    - name: Install Slack
+      when: install_slack | bool
+      block:
+        - name: Install Slack via snap
+          ansible.builtin.command: "timeout 120 snap install slack --classic"
+          register: slack_snap_result
+          changed_when: slack_snap_result.rc == 0
+          failed_when: false
+      rescue:
+        - name: Warn about Slack installation failure
+          ansible.builtin.debug:
+            msg: "Slack installation failed. Skipping and continuing with the rest of the setup."
+
+    # Discord Installation
+    - name: Install Discord
+      when: install_discord | bool
+      block:
+        - name: Download Discord .deb package
+          ansible.builtin.get_url:
+            url: "https://discord.com/api/download?platform=linux"
+            dest: /tmp/discord.deb
+            mode: "0644"
+            timeout: 120
+
+        - name: Install Discord .deb package
+          ansible.builtin.apt:
+            deb: /tmp/discord.deb
+            state: present
+      rescue:
+        - name: Warn about Discord installation failure
+          ansible.builtin.debug:
+            msg: "Discord installation failed. Skipping and continuing with the rest of the setup."
+
+    # JetBrains Toolbox Installation
+    - name: Install JetBrains Toolbox
+      when: install_jetbrains_toolbox | bool
+      block:
+        - name: Check if JetBrains Toolbox is already installed
+          ansible.builtin.stat:
+            path: "/home/{{ remote_regular_user }}/.local/share/JetBrains/Toolbox/jetbrains-toolbox"
+          register: jetbrains_toolbox_stat
+
+        - name: Ensure JetBrains Toolbox directory exists
+          ansible.builtin.file:
+            path: "/home/{{ remote_regular_user }}/.local/share/JetBrains/Toolbox"
+            state: directory
+            mode: "0755"
+            owner: "{{ remote_regular_user }}"
+            group: "{{ remote_regular_user }}"
+          when: not jetbrains_toolbox_stat.stat.exists
+
+        - name: Download and extract JetBrains Toolbox
+          ansible.builtin.shell: |
+            JB_URL=$(curl -s "https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release" \
+              | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['TBA'][0]['downloads']['linux']['link'])")
+            curl -L "$JB_URL" -o /tmp/jetbrains-toolbox.tar.gz
+            tar -xzf /tmp/jetbrains-toolbox.tar.gz -C "$HOME/.local/share/JetBrains/Toolbox" --strip-components=1
+          args:
+            executable: /bin/bash
+            creates: "/home/{{ remote_regular_user }}/.local/share/JetBrains/Toolbox/jetbrains-toolbox"
+          become_user: "{{ remote_regular_user }}"
+          when: not jetbrains_toolbox_stat.stat.exists
+
+        - name: Create symlink for JetBrains Toolbox
+          ansible.builtin.file:
+            src: "/home/{{ remote_regular_user }}/.local/share/JetBrains/Toolbox/jetbrains-toolbox"
+            dest: /usr/local/bin/jetbrains-toolbox
+            state: link
+      rescue:
+        - name: Warn about JetBrains Toolbox installation failure
+          ansible.builtin.debug:
+            msg: "JetBrains Toolbox installation failed. Skipping and continuing with the rest of the setup."
+
+    # Docker Installation
+    - name: Install Docker
+      block:
+        - name: Include geerlingguy.docker role
+          ansible.builtin.include_role:
+            name: geerlingguy.docker
+          vars:
+            docker_users:
+              - "{{ remote_regular_user }}"
+      rescue:
+        - name: Warn about Docker installation failure
+          ansible.builtin.debug:
+            msg: "Docker installation failed. Skipping and continuing with the rest of the setup."
+
+    # Snap Packages
+    - name: Install Snap packages
+      ansible.builtin.command: "timeout 120 snap install {{ item }}"
+      loop: "{{ snap_packages }}"
+      register: snap_result
+      changed_when: snap_result.rc == 0
+      failed_when: false
+
+    # mise Installation
+    - name: Check if mise is installed
+      ansible.builtin.stat:
+        path: "/home/{{ remote_regular_user }}/.local/bin/mise"
+      register: mise_stat
+
+    - name: Install mise
+      ansible.builtin.shell: "curl https://mise.run | sh"
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      when: not mise_stat.stat.exists
+
+    # Atuin Installation
+    - name: Check if atuin is installed
+      ansible.builtin.stat:
+        path: "/home/{{ remote_regular_user }}/.atuin/bin/atuin"
+      register: atuin_stat
+
+    - name: Install atuin
+      ansible.builtin.shell: "curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh -s -- --non-interactive"
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      when: not atuin_stat.stat.exists
+
+    # Eza Installation
+    - name: Ensure /etc/apt/keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Add eza GPG key
+      ansible.builtin.shell: |
+        wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
+      args:
+        executable: /bin/bash
+        creates: /etc/apt/keyrings/gierens.gpg
+
+    - name: Set permissions on eza GPG key and apt list
+      ansible.builtin.file:
+        path: "{{ item }}"
+        mode: "0644"
+      loop:
+        - /etc/apt/keyrings/gierens.gpg
+      failed_when: false
+
+    - name: Add eza apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main"
+        state: present
+        filename: gierens
+        update_cache: true
+
+    - name: Set permissions on eza apt list
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/gierens.list
+        mode: "0644"
+      failed_when: false
+
+    - name: Install eza
+      ansible.builtin.apt:
+        name: eza
+        state: present
+
+    # fzf Installation
+    - name: Ensure ~/.local/bin directory exists for fzf
+      ansible.builtin.file:
+        path: "/home/{{ remote_regular_user }}/.local/bin"
+        state: directory
+        mode: "0755"
+        owner: "{{ remote_regular_user }}"
+        group: "{{ remote_regular_user }}"
+
+    - name: Check if fzf is installed
+      ansible.builtin.stat:
+        path: "/home/{{ remote_regular_user }}/.local/bin/fzf"
+      register: fzf_stat
+
+    - name: Install fzf latest binary
+      ansible.builtin.shell: |
+        ARCH=$(uname -m)
+        case $ARCH in
+          x86_64) ARCH="amd64" ;;
+          aarch64) ARCH="arm64" ;;
+          armv7*) ARCH="armv7" ;;
+        esac
+        FZF_VERSION=$(curl -fsSL https://api.github.com/repos/junegunn/fzf/releases/latest \
+          | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
+        curl -fsSL "https://github.com/junegunn/fzf/releases/download/v${FZF_VERSION}/fzf-${FZF_VERSION}-linux_${ARCH}.tar.gz" \
+          | tar -xz -C "$HOME/.local/bin" fzf
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      when: not fzf_stat.stat.exists
+
+    # Zoxide Installation
+    - name: Check if zoxide is installed
+      ansible.builtin.stat:
+        path: "/home/{{ remote_regular_user }}/.local/bin/zoxide"
+      register: zoxide_stat
+
+    - name: Install zoxide
+      ansible.builtin.shell: "curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
+      args:
+        executable: /bin/bash
+      become_user: "{{ remote_regular_user }}"
+      when: not zoxide_stat.stat.exists
+
+    # Claude CLI Installation
+    - name: Install Claude CLI
+      when: install_claude_code | bool
+      block:
+        - name: Check if Claude CLI is installed
+          ansible.builtin.stat:
+            path: "/home/{{ remote_regular_user }}/.claude/local/claude"
+          register: claude_stat
+
+        - name: Install Claude CLI binary
+          ansible.builtin.shell: "timeout 300 bash -c 'curl -fsSL https://claude.ai/install.sh | bash'"
+          args:
+            executable: /bin/bash
+          become_user: "{{ remote_regular_user }}"
+          when: not claude_stat.stat.exists
+          register: claude_install
+          failed_when: false
+
+        - name: Warn if Claude CLI install failed
+          ansible.builtin.debug:
+            msg: "Claude CLI install failed (rc={{ claude_install.rc }}). Skipping. Common causes: CPU without AVX, low RAM, or the install timed out after 5 minutes. Install manually later."
+          when: claude_install.rc is defined and claude_install.rc != 0

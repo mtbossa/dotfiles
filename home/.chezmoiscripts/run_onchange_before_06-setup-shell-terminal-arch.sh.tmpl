@@ -1,0 +1,22 @@
+{{ if eq (includeTemplate "osFamily" .) "arch" -}}
+#!/bin/bash
+# Arch / Omarchy: same shell and terminal as the Ansible playbook sets up on Debian.
+# zsh and alacritty themselves are installed by 05-install-packages-arch.
+set -euo pipefail
+
+# Login shell -> zsh
+ZSH_BIN="$(command -v zsh)"
+if [ "$(getent passwd "${USER}" | cut -d: -f7)" != "${ZSH_BIN}" ]; then
+    sudo chsh -s "${ZSH_BIN}" "${USER}"
+    echo "Login shell changed to zsh (takes effect on next login)."
+fi
+
+# Default terminal -> Alacritty. Omarchy's installer also adds its desktop entry
+# (used by Super+Return and friends); our ~/.config/alacritty is deployed afterwards.
+if command -v omarchy-install-terminal &>/dev/null; then
+    [[ -r /usr/share/omarchy/default/bash/env-bootstrap ]] && source /usr/share/omarchy/default/bash/env-bootstrap
+    if [ "$(omarchy-default-terminal)" != "alacritty" ]; then
+        omarchy-install-terminal alacritty
+    fi
+fi
+{{ end -}}

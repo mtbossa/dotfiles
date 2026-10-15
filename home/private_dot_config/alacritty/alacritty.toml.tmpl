@@ -1,0 +1,54 @@
+{{- /* On Omarchy, its config (theme, font, padding, opacity via Hyprland) is the base and we only add bindings;
+       Alacritty appends imported arrays, so Omarchy's own keyboard.bindings stay. Elsewhere, the full styled config. */ -}}
+{{ if eq (includeTemplate "isOmarchy" .) "true" -}}
+[general]
+import = [ "/usr/share/omarchy/config/alacritty/alacritty.toml" ]
+
+[selection]
+save_to_clipboard = true
+
+[keyboard]
+bindings = [
+    { key = "Return", mods = "Super|Shift", action = "SpawnNewInstance" },
+]
+{{ else -}}
+{{ if eq (includeTemplate "osFamily" .) "arch" -}}
+[general]
+{{ end -}}
+import = [ "{{ .chezmoi.homeDir }}/.config/alacritty/themes/iterm.toml" ]
+
+[colors]
+draw_bold_text_with_bright_colors = true
+
+[window]
+padding = { x = 20, y = 20 }
+dynamic_padding = true
+opacity = 0.9
+
+[font.normal]
+family = "JetBrainsMono Nerd Font"
+style = "Regular"
+
+[font.bold]
+family = "JetBrainsMono Nerd Font"
+style = "Bold"
+
+[font.italic]
+family = "JetBrainsMono Nerd Font"
+style = "Italic"
+
+[font.bold_italic]
+family = "JetBrainsMono Nerd Font"
+style = "Bold Italic"
+
+[selection]
+save_to_clipboard = true
+
+[cursor.style]
+shape = "Beam"
+
+[keyboard]
+bindings = [
+    { key = "Return", mods = "Super|Shift", action = "SpawnNewInstance" },
+]
+{{ end -}}

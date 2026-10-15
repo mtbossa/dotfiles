@@ -1,0 +1,9 @@
+# Versions/lists used by .chezmoiexternal.toml.tmpl
+externals:
+  catppuccinTmuxVersion: v2.3.0
+  nerdFontsVersion: v3.2.1
+  nerdFonts:
+    - name: JetBrainsMono
+      include: JetBrainsMonoNerdFontMono-*.ttf
+    - name: FiraCode
+      include: FiraCodeNerdFontMono-*.ttf
